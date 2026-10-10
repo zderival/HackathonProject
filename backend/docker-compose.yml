@@ -1,0 +1,52 @@
+# Local development: PostgreSQL + S3-compatible storage (SeaweedFS) + the backend.
+#   docker compose up -d db s3        -> dependencies only (run the API with `npm run dev`)
+#   docker compose --profile full up -d --build -> everything, API on http://localhost:8080
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: gallery
+      POSTGRES_PASSWORD: gallery
+      POSTGRES_DB: gallery
+    ports:
+      - "5433:5432"   # 5432 is often taken by a host PostgreSQL install
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gallery -d gallery"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  s3:
+    # MinIO no longer publishes community images; SeaweedFS provides the S3 API locally.
+    image: chrislusf/seaweedfs:4.48
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.volumeSizeLimitMB=256 -volume.max=0
+    ports:
+      - "8333:8333"
+    volumes:
+      - s3data:/data
+      - ./docker/s3.json:/etc/seaweedfs/s3.json:ro
+
+  api:
+    build: .
+    profiles: ["full"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://gallery:gallery@db:5432/gallery
+      S3_ENDPOINT: http://s3:8333
+      # Signed URLs must use an address the browser/phone can reach.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:8333}
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      s3:
+        condition: service_started
+
+volumes:
+  pgdata:
+  s3data:
