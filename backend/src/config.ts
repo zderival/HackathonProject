@@ -60,6 +60,7 @@ export function loadConfig() {
     },
 
     limits: {
+      authAttemptsPerMinute: int('LIMIT_AUTH_ATTEMPTS_PER_MINUTE', 10),
       maxEditorsPerGallery: int('LIMIT_EDITORS_PER_GALLERY', 5),
       maxViewerConnectionsPerGallery: int('LIMIT_VIEWER_CONNECTIONS_PER_GALLERY', 10),
       maxEditorConnectionsPerGallery: int('LIMIT_EDITOR_CONNECTIONS_PER_GALLERY', 10),

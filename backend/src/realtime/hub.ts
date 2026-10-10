@@ -9,6 +9,7 @@ import type { WebSocket } from 'ws';
 import type { OpsEvent, Publisher } from '../actions/service.js';
 import type { Db } from '../db/pool.js';
 import { capabilitiesFor, resolveAccess, type Principal, type Role } from '../galleries/access.js';
+import type { Lang } from '../lib/i18n.js';
 import type { SceneT } from '../schemas/scene.js';
 
 export type ConnCapability = 'edit' | 'view';
@@ -20,6 +21,7 @@ export interface Connection {
   principal: Principal;
   capability: ConnCapability;
   role: Role;
+  lang: Lang;
   // 'syncing': snapshot not sent yet, events are buffered.
   state: 'syncing' | 'live' | 'closed';
   buffer: OpsEvent[];

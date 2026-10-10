@@ -57,7 +57,7 @@ export function principalFor(req: FastifyRequest, galleryId: string): Principal 
   const c = req.caller;
   if (c.kind === 'viewer') {
     if (c.galleryId !== galleryId) throw new AppError('NOT_FOUND', { what: 'gallery' });
-    return { userId: c.userId, linkToken: c.linkToken, readOnly: true };
+    return { userId: c.userId, linkToken: c.linkToken, readOnly: true, viewerSessionId: c.viewerSessionId };
   }
   return { userId: c.kind === 'user' ? c.userId : null, linkToken: linkTokenOf(req) };
 }

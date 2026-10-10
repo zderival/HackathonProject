@@ -8,7 +8,17 @@ import { requireAccess, type Principal } from '../galleries/access.js';
 import { AppError } from '../lib/errors.js';
 import { toWire, type ActionRequestT, type Change, type OperationT, type WireChangeT } from '../schemas/operations.js';
 import type { SceneT } from '../schemas/scene.js';
-import { changeKeys, compileOps, keysOverlap, type AssetInfo } from '../scene/engine.js';
+import {
+  applyChange,
+  changeKeys,
+  compileOps,
+  deepEqual,
+  getPath,
+  invertChanges,
+  keysOverlap,
+  touchedNodes,
+  type AssetInfo,
+} from '../scene/engine.js';
 import { referencedAssetIds, validateScene } from '../scene/validate.js';
 
 export type ActionSource = 'manual' | 'ai' | 'undo' | 'redo' | 'system';
@@ -64,9 +74,18 @@ export interface CommitInput {
   label?: string | null;
   ops: OperationT[];
   aiCommandId?: string | null;
-  prepare?: (ctx: PrepareContext) => Promise<{ scene: SceneT; changes: Change[]; touchedNodeIds: Set<string>; undoOf?: number; redoOf?: number }>;
+  prepare?: (ctx: PrepareContext) => Promise<Prepared>;
   // Called inside the transaction before commit; throw to abort (used by AI to recheck state).
   beforeCommit?: (client: pg.PoolClient) => Promise<void>;
+}
+
+export interface Prepared {
+  scene: SceneT;
+  changes: Change[];
+  touchedNodeIds: Set<string>;
+  undoOf?: number;
+  redoOf?: number;
+  label?: string;
 }
 
 export interface PrepareContext {
@@ -152,7 +171,7 @@ export class ActionService {
           throw new AppError('REVISION_CONFLICT', { baseRevision: input.baseRevision, currentRevision: current });
       }
 
-      let compiled: { scene: SceneT; changes: Change[]; touchedNodeIds: Set<string>; undoOf?: number; redoOf?: number };
+      let compiled: Prepared;
       if (input.prepare) {
         compiled = await input.prepare({ client, scene, revision: current });
       } else {
@@ -203,7 +222,7 @@ export class ActionService {
           input.principal.userId,
           input.source,
           input.baseRevision ?? current,
-          input.label ?? null,
+          compiled.label ?? input.label ?? null,
           JSON.stringify(input.ops),
           JSON.stringify(compiled.changes),
           compiled.undoOf ?? null,
@@ -235,6 +254,72 @@ export class ActionService {
       changes: result.event?.changes ?? [],
       event: result.event,
     };
+  }
+
+  // Undoes the caller's latest undoable action (or a specific one of their own actions)
+  // by committing its guarded inverse as a new revision. Collaborators' later changes
+  // to other properties are preserved; if anyone changed a property the inverse would
+  // restore, the undo is refused with UNDO_CONFLICT instead of overwriting their edit.
+  undo(galleryId: string, principal: Principal & { userId: string }, opts: { requestId: string; actionId?: string }) {
+    return this.commit({
+      galleryId,
+      principal,
+      source: 'undo',
+      requestId: opts.requestId,
+      baseRevision: null,
+      conflictMode: 'merge',
+      ops: [],
+      label: null,
+      prepare: async ({ client, scene }) => {
+        const params: unknown[] = [galleryId, principal.userId];
+        let where = `source IN ('manual', 'ai', 'redo') AND NOT undone`;
+        if (opts.actionId) {
+          params.push(opts.actionId);
+          where = `action_id = $3`;
+        }
+        const { rows } = await client.query(
+          `SELECT revision, label, changes, undone, source FROM gallery_actions
+           WHERE gallery_id = $1 AND actor_id = $2 AND ${where} ORDER BY revision DESC LIMIT 1`,
+          params,
+        );
+        const target = rows[0];
+        if (!target) throw new AppError('NOTHING_TO_UNDO');
+        if (target.undone || target.source === 'undo')
+          throw new AppError('NOTHING_TO_UNDO', { actionId: opts.actionId, reason: 'action is already undone or is an undo' });
+        const applied = applyGuarded(scene, invertChanges(target.changes));
+        return { ...applied, undoOf: target.revision, label: `Undo${target.label ? `: ${target.label}` : ''}` };
+      },
+    });
+  }
+
+  // Re-applies the caller's most recently undone action, provided they made no new
+  // manual/AI edit since that undo (a new edit clears the redo stack).
+  redo(galleryId: string, principal: Principal & { userId: string }, opts: { requestId: string }) {
+    return this.commit({
+      galleryId,
+      principal,
+      source: 'redo',
+      requestId: opts.requestId,
+      baseRevision: null,
+      conflictMode: 'merge',
+      ops: [],
+      label: null,
+      prepare: async ({ client, scene }) => {
+        const { rows } = await client.query(
+          `SELECT u.revision, u.label, u.changes FROM gallery_actions u
+           WHERE u.gallery_id = $1 AND u.actor_id = $2 AND u.source = 'undo' AND NOT u.undone
+             AND NOT EXISTS (SELECT 1 FROM gallery_actions n WHERE n.gallery_id = u.gallery_id AND n.actor_id = u.actor_id
+                             AND n.source IN ('manual', 'ai') AND n.revision > u.revision)
+           ORDER BY u.revision DESC LIMIT 1`,
+          [galleryId, principal.userId],
+        );
+        const target = rows[0];
+        if (!target) throw new AppError('NOTHING_TO_REDO');
+        const applied = applyGuarded(scene, invertChanges(target.changes));
+        const label = typeof target.label === 'string' ? target.label.replace(/^Undo(: )?/, '') : '';
+        return { ...applied, redoOf: target.revision, label: `Redo${label ? `: ${label}` : ''}` };
+      },
+    });
   }
 
   private async assertNoOverlap(client: pg.PoolClient, galleryId: string, base: number, current: number, changes: Change[]) {
@@ -314,6 +399,42 @@ export class ActionService {
     }));
     return { items, nextBeforeRevision: rows.length > opts.limit ? items[items.length - 1].revision : null };
   }
+}
+
+// Applies inverse changes one by one, requiring the scene to still hold the value each
+// change expects to replace. Sequential checking lets one action's own consecutive
+// changes to the same property invert cleanly.
+function applyGuarded(scene: SceneT, changes: Change[]) {
+  const working = structuredClone(scene);
+  for (const c of changes) {
+    const conflict = (reason: string, key: string) => {
+      throw new AppError('UNDO_CONFLICT', { reason, key });
+    };
+    switch (c.kind) {
+      case 'node.add':
+        if (working.nodes[c.node.id]) conflict('node exists again', `node/${c.node.id}`);
+        if (c.node.parentId !== null && !working.nodes[c.node.parentId]) conflict('parent was removed', `node/${c.node.parentId}`);
+        break;
+      case 'node.remove': {
+        const current = working.nodes[c.node.id];
+        if (!current) conflict('node was already removed', `node/${c.node.id}`);
+        else if (!deepEqual(current, c.node)) conflict('node was changed by a later edit', `node/${c.node.id}`);
+        if (Object.values(working.nodes).some((n) => n.parentId === c.node.id)) conflict('node has new children', `node/${c.node.id}`);
+        break;
+      }
+      case 'node.set': {
+        const node = working.nodes[c.nodeId];
+        if (!node) conflict('node was removed', `node/${c.nodeId}`);
+        else if (!deepEqual(getPath(node, c.path), c.before)) conflict('property was changed by a later edit', `node/${c.nodeId}/${c.path}`);
+        break;
+      }
+      case 'scene.set':
+        if (!deepEqual(getPath(working, c.path), c.before)) conflict('setting was changed by a later edit', `scene/${c.path}`);
+        break;
+    }
+    applyChange(working, c);
+  }
+  return { scene: working, changes, touchedNodeIds: touchedNodes(changes) };
 }
 
 function assetIdsInOps(ops: OperationT[]): string[] {

@@ -73,9 +73,10 @@ export function validateNodeShape(node: any, nodeIdForErrors?: string): SceneIss
   findNonFinite(node, prefix, issues, id);
   if (issues.length) return issues;
   if (!validator(node)) return ajvIssues(validator.errors, prefix, id);
-  const q = quatIssue(node.transform.rotation, `${prefix}/transform/rotation`, id);
+  const n = node as { transform: { rotation: unknown }; ext: unknown };
+  const q = quatIssue(n.transform.rotation, `${prefix}/transform/rotation`, id);
   if (q) issues.push(q);
-  if (JSON.stringify(node.ext).length > LIMITS.extBytes)
+  if (JSON.stringify(n.ext).length > LIMITS.extBytes)
     issues.push({ path: `${prefix}/ext`, message: `ext exceeds ${LIMITS.extBytes} bytes`, nodeId: id });
   return issues;
 }

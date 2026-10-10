@@ -58,6 +58,55 @@ export async function actionRoutes(app: App) {
     },
   );
 
+  const UndoBody = Type.Object(
+    {
+      requestId: Type.String({ minLength: 8, maxLength: 100, description: 'Idempotency key; retries return duplicate=true.' }),
+      actionId: Type.Optional(Type.String({ format: 'uuid', description: 'Undo this specific action of yours instead of your latest one.' })),
+    },
+    { additionalProperties: false },
+  );
+
+  app.post(
+    '/v1/galleries/:galleryId/undo',
+    {
+      schema: {
+        tags: ['scene'],
+        summary: "Undo the caller's latest action (guarded inverse, new revision)",
+        description:
+          'Commits the inverse of your latest manual/AI/redo action as a new revision, broadcast like any edit. Changes by other people are preserved. If someone else has since changed a property this undo would restore, returns 409 UNDO_CONFLICT and changes nothing. 409 NOTHING_TO_UNDO when your history is empty.',
+        params: GalleryIdParams,
+        body: UndoBody,
+        response: { 200: ActionResult, 409: ErrorResponse },
+      },
+    },
+    async (req) => {
+      const { userId } = requireUser(req);
+      const principal = { ...principalFor(req, req.params.galleryId), userId };
+      const { event: _e, ...result } = await actions.undo(req.params.galleryId, principal, req.body);
+      return result;
+    },
+  );
+
+  app.post(
+    '/v1/galleries/:galleryId/redo',
+    {
+      schema: {
+        tags: ['scene'],
+        summary: "Redo the caller's most recent undo",
+        description: 'Available until you make a new manual or AI edit. Same conflict rules as undo.',
+        params: GalleryIdParams,
+        body: Type.Object({ requestId: UndoBody.properties.requestId }, { additionalProperties: false }),
+        response: { 200: ActionResult, 409: ErrorResponse },
+      },
+    },
+    async (req) => {
+      const { userId } = requireUser(req);
+      const principal = { ...principalFor(req, req.params.galleryId), userId };
+      const { event: _e, ...result } = await actions.redo(req.params.galleryId, principal, req.body);
+      return result;
+    },
+  );
+
   app.get(
     '/v1/galleries/:galleryId/actions',
     {

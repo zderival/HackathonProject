@@ -30,7 +30,7 @@ const AuthResult = Type.Object({ user: User, tokens: Tokens });
 export async function authRoutes(app: App) {
   const { auth } = app.deps;
   // Per-IP+email login throttle (in-memory; single instance).
-  const loginLimiter = new RateLimiter(10, 60_000);
+  const loginLimiter = new RateLimiter(app.deps.config.limits.authAttemptsPerMinute, 60_000);
 
   app.post(
     '/v1/auth/register',

@@ -130,14 +130,13 @@ export async function realtimeRoutes(app: App) {
         socket.close(CLOSE.TICKET_INVALID, 'ticket invalid');
         return;
       }
-      if (t.viewer_session_id) {
-        const vs = await db.query(`SELECT 1 FROM viewer_sessions WHERE id = $1 AND revoked_at IS NULL AND expires_at > now()`, [t.viewer_session_id]);
-        if (!vs.rows[0]) {
-          socket.close(CLOSE.TICKET_INVALID, 'viewer session expired');
-          return;
-        }
-      }
-      const principal = { userId: t.user_id as string | null, linkToken: t.link_token as string | null, readOnly: t.capability === 'view' };
+      // A revoked/expired viewer session resolves to no access below.
+      const principal = {
+        userId: t.user_id as string | null,
+        linkToken: t.link_token as string | null,
+        readOnly: t.capability === 'view',
+        viewerSessionId: t.viewer_session_id as string | null,
+      };
       const access = await resolveAccess(db, t.gallery_id, principal).catch(() => null);
       const caps = capabilitiesFor(access?.role ?? null, principal.readOnly);
       if (!access?.role || (t.capability === 'edit' && !caps.canEdit)) {
@@ -154,7 +153,7 @@ export async function realtimeRoutes(app: App) {
 
       // Register BEFORE reading the snapshot: anything committed after this point is
       // buffered, anything before it is in the snapshot (no lost changes).
-      const conn: Connection = hub.register({ ws: socket, galleryId: t.gallery_id, principal, capability: t.capability, role: access.role });
+      const conn: Connection = hub.register({ ws: socket, galleryId: t.gallery_id, principal, capability: t.capability, role: access.role, lang: req.lang });
       socket.on('pong', () => (conn.alive = true));
       socket.on('close', () => hub.unregister(conn));
       socket.on('error', () => hub.unregister(conn));
@@ -214,7 +213,7 @@ export async function realtimeRoutes(app: App) {
         return;
       case 'submit': {
         if (conn.capability !== 'edit' || !conn.principal.userId) {
-          hub.send(conn, { type: 'error', code: 'FORBIDDEN', clientMsgId: msg.clientMsgId, message: localizedMessage('FORBIDDEN', 'en') });
+          hub.send(conn, { type: 'error', code: 'FORBIDDEN', clientMsgId: msg.clientMsgId, message: localizedMessage('FORBIDDEN', conn.lang) });
           return;
         }
         try {
@@ -236,7 +235,7 @@ export async function realtimeRoutes(app: App) {
             clientMsgId: msg.clientMsgId,
             requestId: msg.action.requestId,
             code: e.code,
-            message: localizedMessage(e.code, 'en'),
+            message: localizedMessage(e.code, conn.lang),
             details: e.details,
           });
           // A permission failure means our cached capability is stale.

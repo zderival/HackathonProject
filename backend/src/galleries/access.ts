@@ -33,6 +33,8 @@ export interface Principal {
   linkToken?: string | null;
   // Viewer sessions/tickets are capped to read-only regardless of the account's role.
   readOnly?: boolean;
+  // Set for phone/preview sessions: access ends when the session is revoked or expires.
+  viewerSessionId?: string | null;
 }
 
 export function capabilitiesFor(role: Role | null, readOnly = false) {
@@ -45,14 +47,17 @@ export function capabilitiesFor(role: Role | null, readOnly = false) {
 export async function resolveAccess(db: DbClient, galleryId: string, p: Principal): Promise<GalleryAccess> {
   const { rows } = await db.query(
     `SELECT g.id, g.owner_id, g.sharing_mode, g.view_link_token, g.edit_link_token, g.link_version, g.access_version,
-            m.role AS member_role, m.source AS member_source, m.link_version AS member_link_version
+            m.role AS member_role, m.source AS member_source, m.link_version AS member_link_version,
+            ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM viewer_sessions v WHERE v.id = $3 AND v.gallery_id = g.id
+                                         AND v.revoked_at IS NULL AND v.expires_at > now())) AS session_ok
      FROM galleries g
      LEFT JOIN gallery_members m ON m.gallery_id = g.id AND m.user_id = $2
      WHERE g.id = $1 AND g.deleted_at IS NULL`,
-    [galleryId, p.userId],
+    [galleryId, p.userId, p.viewerSessionId ?? null],
   );
   const g = rows[0];
   if (!g) throw new AppError('NOT_FOUND', { what: 'gallery' });
+  if (!g.session_ok) return { galleryId, role: null, via: null, sharingMode: g.sharing_mode, accessVersion: g.access_version };
 
   const candidates: { role: Role; via: GalleryAccess['via'] }[] = [];
   if (p.userId && g.owner_id === p.userId) candidates.push({ role: 'owner', via: 'owner' });
