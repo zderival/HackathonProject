@@ -1,0 +1,2256 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "scene.schema.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "environment",
+    "viewerAnchor",
+    "nodes",
+    "ext"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "backgroundColor",
+        "skybox",
+        "gradientTopColor",
+        "gradientBottomColor",
+        "ambientColor",
+        "ambientIntensity",
+        "fog"
+      ],
+      "properties": {
+        "backgroundColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "sRGB hex color \"#rrggbb\"."
+        },
+        "skybox": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "color"
+            },
+            {
+              "type": "string",
+              "const": "gradient"
+            },
+            {
+              "type": "string",
+              "const": "studio"
+            }
+          ]
+        },
+        "gradientTopColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "sRGB hex color \"#rrggbb\"."
+        },
+        "gradientBottomColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "sRGB hex color \"#rrggbb\"."
+        },
+        "ambientColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "sRGB hex color \"#rrggbb\"."
+        },
+        "ambientIntensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "fog": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "color",
+            "near",
+            "far"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "sRGB hex color \"#rrggbb\"."
+            },
+            "near": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "far": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "viewerAnchor": {
+      "type": "object",
+      "required": [
+        "position",
+        "rotation",
+        "roomId"
+      ],
+      "properties": {
+        "position": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            },
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            },
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            }
+          ],
+          "minItems": 3,
+          "description": "Meters [x, y, z]."
+        },
+        "rotation": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            }
+          ],
+          "minItems": 4,
+          "description": "Base orientation; the phone composes its local head rotation on top: world = anchor * head."
+        },
+        "roomId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "description": "Stable node ID, unique within the scene."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "Website-controlled viewpoint for phone viewers (world space, eye position)."
+    },
+    "nodes": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9_-]{1,64}$": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "room"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "width",
+                    "depth",
+                    "height"
+                  ],
+                  "properties": {
+                    "width": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 200,
+                      "description": "Interior size along X (m)."
+                    },
+                    "depth": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 200,
+                      "description": "Interior size along Z (m)."
+                    },
+                    "height": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 50,
+                      "description": "Interior height (m)."
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "room node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "wall"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "width",
+                    "height",
+                    "thickness",
+                    "shell",
+                    "material"
+                  ],
+                  "properties": {
+                    "width": {
+                      "type": "number",
+                      "minimum": 0.05,
+                      "maximum": 200,
+                      "description": "Along local X (m)."
+                    },
+                    "height": {
+                      "type": "number",
+                      "minimum": 0.05,
+                      "maximum": 50,
+                      "description": "Along local Y (m), centered on the node origin."
+                    },
+                    "thickness": {
+                      "type": "number",
+                      "minimum": 0.01,
+                      "maximum": 5,
+                      "description": "Along local Z (m); front face at +thickness/2."
+                    },
+                    "shell": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "north"
+                        },
+                        {
+                          "type": "string",
+                          "const": "south"
+                        },
+                        {
+                          "type": "string",
+                          "const": "east"
+                        },
+                        {
+                          "type": "string",
+                          "const": "west"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Room shell side this wall belongs to; used by room.resize. north = -Z."
+                    },
+                    "material": {
+                      "type": "object",
+                      "required": [
+                        "color",
+                        "roughness",
+                        "metalness",
+                        "opacity",
+                        "emissiveColor",
+                        "emissiveIntensity",
+                        "textureAssetId",
+                        "textureRepeat"
+                      ],
+                      "properties": {
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "roughness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "metalness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "opacity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "emissiveColor": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "emissiveIntensity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        },
+                        "textureAssetId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "ID of an uploaded asset in this gallery."
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "textureRepeat": {
+                          "type": "array",
+                          "additionalItems": false,
+                          "items": [
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            }
+                          ],
+                          "minItems": 2,
+                          "description": "Texture tiling [u, v]."
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "wall node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "floor"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "width",
+                    "depth",
+                    "material"
+                  ],
+                  "properties": {
+                    "width": {
+                      "type": "number",
+                      "minimum": 0.05,
+                      "maximum": 200,
+                      "description": "Along local X (m)."
+                    },
+                    "depth": {
+                      "type": "number",
+                      "minimum": 0.05,
+                      "maximum": 200,
+                      "description": "Along local Z (m)."
+                    },
+                    "material": {
+                      "type": "object",
+                      "required": [
+                        "color",
+                        "roughness",
+                        "metalness",
+                        "opacity",
+                        "emissiveColor",
+                        "emissiveIntensity",
+                        "textureAssetId",
+                        "textureRepeat"
+                      ],
+                      "properties": {
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "roughness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "metalness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "opacity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "emissiveColor": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "emissiveIntensity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        },
+                        "textureAssetId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "ID of an uploaded asset in this gallery."
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "textureRepeat": {
+                          "type": "array",
+                          "additionalItems": false,
+                          "items": [
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            }
+                          ],
+                          "minItems": 2,
+                          "description": "Texture tiling [u, v]."
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "floor node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "ceiling"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "width",
+                    "depth",
+                    "material"
+                  ],
+                  "properties": {
+                    "width": {
+                      "type": "number",
+                      "minimum": 0.05,
+                      "maximum": 200,
+                      "description": "Along local X (m)."
+                    },
+                    "depth": {
+                      "type": "number",
+                      "minimum": 0.05,
+                      "maximum": 200,
+                      "description": "Along local Z (m)."
+                    },
+                    "material": {
+                      "type": "object",
+                      "required": [
+                        "color",
+                        "roughness",
+                        "metalness",
+                        "opacity",
+                        "emissiveColor",
+                        "emissiveIntensity",
+                        "textureAssetId",
+                        "textureRepeat"
+                      ],
+                      "properties": {
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "roughness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "metalness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "opacity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "emissiveColor": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "emissiveIntensity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        },
+                        "textureAssetId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "ID of an uploaded asset in this gallery."
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "textureRepeat": {
+                          "type": "array",
+                          "additionalItems": false,
+                          "items": [
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            }
+                          ],
+                          "minItems": 2,
+                          "description": "Texture tiling [u, v]."
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "ceiling node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "primitive"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "shape",
+                    "size",
+                    "material"
+                  ],
+                  "properties": {
+                    "shape": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "box"
+                        },
+                        {
+                          "type": "string",
+                          "const": "sphere"
+                        },
+                        {
+                          "type": "string",
+                          "const": "cylinder"
+                        },
+                        {
+                          "type": "string",
+                          "const": "cone"
+                        },
+                        {
+                          "type": "string",
+                          "const": "plane"
+                        },
+                        {
+                          "type": "string",
+                          "const": "torus"
+                        }
+                      ]
+                    },
+                    "size": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Bounding size in meters [x, y, z] before scale; centered on the origin."
+                    },
+                    "material": {
+                      "type": "object",
+                      "required": [
+                        "color",
+                        "roughness",
+                        "metalness",
+                        "opacity",
+                        "emissiveColor",
+                        "emissiveIntensity",
+                        "textureAssetId",
+                        "textureRepeat"
+                      ],
+                      "properties": {
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "roughness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "metalness": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "opacity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "emissiveColor": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "emissiveIntensity": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        },
+                        "textureAssetId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "ID of an uploaded asset in this gallery."
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "textureRepeat": {
+                          "type": "array",
+                          "additionalItems": false,
+                          "items": [
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 100
+                            }
+                          ],
+                          "minItems": 2,
+                          "description": "Texture tiling [u, v]."
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "primitive node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "artwork"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "assetId",
+                    "width",
+                    "height",
+                    "fit",
+                    "title",
+                    "description",
+                    "attribution",
+                    "frame"
+                  ],
+                  "properties": {
+                    "assetId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "description": "ID of an uploaded asset in this gallery."
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Image asset shown on the panel; null = empty panel."
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 0.01,
+                      "maximum": 20,
+                      "description": "Image area width (m), excluding frame."
+                    },
+                    "height": {
+                      "type": "number",
+                      "minimum": 0.01,
+                      "maximum": 20,
+                      "description": "Image area height (m), excluding frame."
+                    },
+                    "fit": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "contain"
+                        },
+                        {
+                          "type": "string",
+                          "const": "cover"
+                        },
+                        {
+                          "type": "string",
+                          "const": "stretch"
+                        }
+                      ]
+                    },
+                    "title": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "description": {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    "attribution": {
+                      "type": "string",
+                      "maxLength": 300
+                    },
+                    "frame": {
+                      "type": "object",
+                      "required": [
+                        "style",
+                        "color",
+                        "width",
+                        "depth",
+                        "matColor",
+                        "matWidth"
+                      ],
+                      "properties": {
+                        "style": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "none"
+                            },
+                            {
+                              "type": "string",
+                              "const": "thin"
+                            },
+                            {
+                              "type": "string",
+                              "const": "classic"
+                            },
+                            {
+                              "type": "string",
+                              "const": "modern"
+                            },
+                            {
+                              "type": "string",
+                              "const": "ornate"
+                            }
+                          ],
+                          "description": "Frame geometry style, rendered by the client."
+                        },
+                        "color": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "width": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "description": "Frame border width in meters."
+                        },
+                        "depth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 0.5,
+                          "description": "Frame depth in meters."
+                        },
+                        "matColor": {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        "matWidth": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "description": "Mat (passe-partout) width in meters; 0 = no mat."
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "artwork node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "text"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "text",
+                    "fontSize",
+                    "color",
+                    "align",
+                    "maxWidth",
+                    "backgroundColor",
+                    "billboard"
+                  ],
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "fontSize": {
+                      "type": "number",
+                      "minimum": 0.01,
+                      "maximum": 5,
+                      "description": "Cap height in meters."
+                    },
+                    "color": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$",
+                      "description": "sRGB hex color \"#rrggbb\"."
+                    },
+                    "align": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "left"
+                        },
+                        {
+                          "type": "string",
+                          "const": "center"
+                        },
+                        {
+                          "type": "string",
+                          "const": "right"
+                        }
+                      ]
+                    },
+                    "maxWidth": {
+                      "type": "number",
+                      "minimum": 0.1,
+                      "maximum": 50,
+                      "description": "Wrap width in meters."
+                    },
+                    "backgroundColor": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^#[0-9a-fA-F]{6}$",
+                          "description": "sRGB hex color \"#rrggbb\"."
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "billboard": {
+                      "type": "boolean",
+                      "description": "If true the client keeps the label facing the camera."
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "text node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "group"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "group node"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "name",
+                "parentId",
+                "transform",
+                "visible",
+                "locked",
+                "props",
+                "ext"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                  "description": "Stable node ID, unique within the scene."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "light"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                      "description": "Stable node ID, unique within the scene."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transform": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "rotation",
+                    "scale"
+                  ],
+                  "properties": {
+                    "position": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -500,
+                          "maximum": 500
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Meters [x, y, z]."
+                    },
+                    "rotation": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        }
+                      ],
+                      "minItems": 4,
+                      "description": "Unit quaternion [x, y, z, w]."
+                    },
+                    "scale": {
+                      "type": "array",
+                      "additionalItems": false,
+                      "items": [
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "number",
+                          "minimum": 0.001,
+                          "maximum": 100
+                        }
+                      ],
+                      "minItems": 3,
+                      "description": "Positive per-axis scale."
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "Local transform relative to the parent node."
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "description": "Editor hint: locked nodes are not selectable in the website editor."
+                },
+                "props": {
+                  "type": "object",
+                  "required": [
+                    "lightType",
+                    "color",
+                    "intensity",
+                    "range",
+                    "angle",
+                    "penumbra",
+                    "castShadow"
+                  ],
+                  "properties": {
+                    "lightType": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "ambient"
+                        },
+                        {
+                          "type": "string",
+                          "const": "directional"
+                        },
+                        {
+                          "type": "string",
+                          "const": "point"
+                        },
+                        {
+                          "type": "string",
+                          "const": "spot"
+                        }
+                      ]
+                    },
+                    "color": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$",
+                      "description": "sRGB hex color \"#rrggbb\"."
+                    },
+                    "intensity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Relative intensity; clients map to their light units."
+                    },
+                    "range": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 200,
+                      "description": "Point/spot falloff distance (m); 0 = infinite."
+                    },
+                    "angle": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1.5707963267948966,
+                      "description": "Spot cone half-angle (radians)."
+                    },
+                    "penumbra": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "castShadow": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "ext": {
+                  "type": "object",
+                  "patternProperties": {
+                    "^[A-Za-z0-9_.-]{1,64}$": {}
+                  },
+                  "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+                }
+              },
+              "additionalProperties": false,
+              "title": "light node"
+            }
+          ],
+          "description": "Any scene node, discriminated by \"type\"."
+        }
+      },
+      "description": "All nodes keyed by ID; hierarchy via parentId."
+    },
+    "ext": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9_.-]{1,64}$": {}
+      },
+      "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+    }
+  },
+  "additionalProperties": false
+}

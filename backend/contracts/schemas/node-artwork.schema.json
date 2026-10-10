@@ -1,0 +1,281 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "node-artwork.schema.json",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "name",
+    "parentId",
+    "transform",
+    "visible",
+    "locked",
+    "props",
+    "ext"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "description": "Stable node ID, unique within the scene."
+    },
+    "type": {
+      "type": "string",
+      "const": "artwork"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "parentId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "description": "Stable node ID, unique within the scene."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "transform": {
+      "type": "object",
+      "required": [
+        "position",
+        "rotation",
+        "scale"
+      ],
+      "properties": {
+        "position": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            },
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            },
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            }
+          ],
+          "minItems": 3,
+          "description": "Meters [x, y, z]."
+        },
+        "rotation": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            }
+          ],
+          "minItems": 4,
+          "description": "Unit quaternion [x, y, z, w]."
+        },
+        "scale": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 100
+            },
+            {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 100
+            },
+            {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 100
+            }
+          ],
+          "minItems": 3,
+          "description": "Positive per-axis scale."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Local transform relative to the parent node."
+    },
+    "visible": {
+      "type": "boolean"
+    },
+    "locked": {
+      "type": "boolean",
+      "description": "Editor hint: locked nodes are not selectable in the website editor."
+    },
+    "props": {
+      "type": "object",
+      "required": [
+        "assetId",
+        "width",
+        "height",
+        "fit",
+        "title",
+        "description",
+        "attribution",
+        "frame"
+      ],
+      "properties": {
+        "assetId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID of an uploaded asset in this gallery."
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Image asset shown on the panel; null = empty panel."
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 20,
+          "description": "Image area width (m), excluding frame."
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 20,
+          "description": "Image area height (m), excluding frame."
+        },
+        "fit": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "contain"
+            },
+            {
+              "type": "string",
+              "const": "cover"
+            },
+            {
+              "type": "string",
+              "const": "stretch"
+            }
+          ]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "attribution": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "frame": {
+          "type": "object",
+          "required": [
+            "style",
+            "color",
+            "width",
+            "depth",
+            "matColor",
+            "matWidth"
+          ],
+          "properties": {
+            "style": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "none"
+                },
+                {
+                  "type": "string",
+                  "const": "thin"
+                },
+                {
+                  "type": "string",
+                  "const": "classic"
+                },
+                {
+                  "type": "string",
+                  "const": "modern"
+                },
+                {
+                  "type": "string",
+                  "const": "ornate"
+                }
+              ],
+              "description": "Frame geometry style, rendered by the client."
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "sRGB hex color \"#rrggbb\"."
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Frame border width in meters."
+            },
+            "depth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5,
+              "description": "Frame depth in meters."
+            },
+            "matColor": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "sRGB hex color \"#rrggbb\"."
+            },
+            "matWidth": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Mat (passe-partout) width in meters; 0 = no mat."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ext": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9_.-]{1,64}$": {}
+      },
+      "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+    }
+  },
+  "additionalProperties": false,
+  "title": "artwork node"
+}

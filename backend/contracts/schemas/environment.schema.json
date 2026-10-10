@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "environment.schema.json",
+  "type": "object",
+  "required": [
+    "backgroundColor",
+    "skybox",
+    "gradientTopColor",
+    "gradientBottomColor",
+    "ambientColor",
+    "ambientIntensity",
+    "fog"
+  ],
+  "properties": {
+    "backgroundColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "sRGB hex color \"#rrggbb\"."
+    },
+    "skybox": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "color"
+        },
+        {
+          "type": "string",
+          "const": "gradient"
+        },
+        {
+          "type": "string",
+          "const": "studio"
+        }
+      ]
+    },
+    "gradientTopColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "sRGB hex color \"#rrggbb\"."
+    },
+    "gradientBottomColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "sRGB hex color \"#rrggbb\"."
+    },
+    "ambientColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "sRGB hex color \"#rrggbb\"."
+    },
+    "ambientIntensity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "fog": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "color",
+        "near",
+        "far"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "sRGB hex color \"#rrggbb\"."
+        },
+        "near": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "far": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -220,6 +220,14 @@ export class RealtimeHub implements Publisher {
     }
   }
 
+  // Private messages (assistant command updates) go only to that user's editor
+  // connections for the gallery; read-only viewer connections never receive them.
+  sendToUser(galleryId: string, userId: string, msg: object) {
+    for (const conn of this.galleries.get(galleryId) ?? []) {
+      if (conn.capability === 'edit' && conn.principal.userId === userId && conn.state !== 'closed') this.send(conn, msg);
+    }
+  }
+
   heartbeat() {
     for (const set of this.galleries.values()) {
       for (const conn of set) {
@@ -236,6 +244,12 @@ export class RealtimeHub implements Publisher {
         }
       }
     }
+  }
+
+  // Gallery-wide notices that are not scene changes (e.g. a verified donation). Not part
+  // of the revision sequence; clients that miss one simply re-fetch the summary.
+  broadcast(galleryId: string, msg: object) {
+    for (const conn of this.galleries.get(galleryId) ?? []) if (conn.state === 'live') this.send(conn, msg);
   }
 
   closeAll(code: number, reason: string) {

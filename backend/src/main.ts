@@ -12,6 +12,12 @@ if (process.env.MIGRATE_ON_START !== 'false') await migrate(config.databaseUrl, 
 if (config.s3.createBucket) await storage.ensureBucket();
 
 const app = await buildApp({ config, db, storage });
+// Fail commands interrupted by a restart; resume queued ones.
+const recovered = await app.deps.assistant.recover();
+if (recovered.interrupted || recovered.resumed) app.log.info(recovered, 'assistant commands recovered');
+app.log.info({ assistant: app.deps.assistant.providerName }, 'assistant provider');
+app.deps.donations.startPolling();
+if (config.solana.enabled) app.log.info({ cluster: config.solana.cluster }, 'donations enabled');
 await app.listen({ port: config.port, host: config.host });
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

@@ -1,0 +1,25 @@
+# HTTPS for the API, including WebSocket upgrades on /v1/ws (Caddy proxies upgrades
+# automatically and does not time out long-lived connections).
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy api:8080 {
+		# Health-checked upstream; the app also answers /ready for external monitors.
+		health_uri /health
+		health_interval 15s
+		# Keep the original client IP for rate limiting (TRUST_PROXY=true in the app).
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

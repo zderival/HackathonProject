@@ -1,0 +1,39 @@
+# Production stack for one Vultr Cloud Compute VM:
+#   caddy  - HTTPS/WSS termination with automatic Let's Encrypt certificates
+#   api    - the backend (single instance; see docs/deployment.md for scaling notes)
+# PostgreSQL = Vultr Managed Database, storage = Vultr Object Storage (both external).
+#
+#   cp .env.production.example .env.production   # fill in secrets
+#   docker compose up -d --build
+services:
+  api:
+    build: ../..
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      TRUST_PROXY: "true"
+    expose:
+      - "8080"
+    stop_grace_period: 20s
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN, e.g. api.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

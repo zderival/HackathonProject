@@ -1,6 +1,6 @@
 # Local development: PostgreSQL + S3-compatible storage (SeaweedFS) + the backend.
 #   docker compose up -d db s3        -> dependencies only (run the API with `npm run dev`)
-#   docker compose --profile full up -d --build -> everything, API on http://localhost:8080
+#   docker compose --profile full up -d --build -> everything, API on http://localhost:8080 (or $API_PORT)
 services:
   db:
     image: postgres:18-alpine
@@ -39,8 +39,10 @@ services:
       # Signed URLs must use an address the browser/phone can reach.
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:8333}
       PORT: 8080
+      # The image contains production dependencies only.
+      NODE_ENV: production
     ports:
-      - "8080:8080"
+      - "${API_PORT:-8080}:8080"   # API_PORT=8090 if npm run dev already uses 8080
     depends_on:
       db:
         condition: service_healthy

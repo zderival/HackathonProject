@@ -4,3 +4,8 @@ dist
 test
 coverage
 *.log
+reports
+.claude
+contracts
+docs
+.git

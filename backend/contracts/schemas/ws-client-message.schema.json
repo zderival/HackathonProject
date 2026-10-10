@@ -1,0 +1,1098 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ws-client-message.schema.json",
+  "anyOf": [
+    {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "ping"
+        },
+        "t": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "title": "ClientPing"
+    },
+    {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "resync"
+        },
+        "fromRevision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Last revision applied locally; omit to request a fresh snapshot."
+        }
+      },
+      "additionalProperties": false,
+      "title": "ClientResync"
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "clientMsgId",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "submit"
+        },
+        "clientMsgId": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "action": {
+          "type": "object",
+          "required": [
+            "requestId",
+            "baseRevision",
+            "ops"
+          ],
+          "properties": {
+            "requestId": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 100,
+              "description": "Client-generated idempotency key (UUID recommended)."
+            },
+            "actionId": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Optional client-generated action ID."
+            },
+            "baseRevision": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Revision the client based these edits on."
+            },
+            "conflictMode": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "strict"
+                },
+                {
+                  "type": "string",
+                  "const": "merge"
+                }
+              ],
+              "description": "strict (default): fail if the gallery revision is not baseRevision. merge: fail only if a change committed after baseRevision touched the same node properties (or removed/added the same nodes)."
+            },
+            "label": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Human label shown in history, e.g. \"Move painting\"."
+            },
+            "ops": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "node"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.add"
+                      },
+                      "node": {
+                        "type": "object",
+                        "required": [
+                          "type"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                            "description": "Stable node ID, unique within the scene."
+                          },
+                          "type": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "room"
+                              },
+                              {
+                                "type": "string",
+                                "const": "wall"
+                              },
+                              {
+                                "type": "string",
+                                "const": "floor"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ceiling"
+                              },
+                              {
+                                "type": "string",
+                                "const": "primitive"
+                              },
+                              {
+                                "type": "string",
+                                "const": "artwork"
+                              },
+                              {
+                                "type": "string",
+                                "const": "text"
+                              },
+                              {
+                                "type": "string",
+                                "const": "group"
+                              },
+                              {
+                                "type": "string",
+                                "const": "light"
+                              }
+                            ]
+                          },
+                          "name": {
+                            "type": "string",
+                            "maxLength": 120
+                          },
+                          "parentId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                                "description": "Stable node ID, unique within the scene."
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transform": {
+                            "type": "object",
+                            "properties": {
+                              "position": {
+                                "type": "array",
+                                "additionalItems": false,
+                                "items": [
+                                  {
+                                    "type": "number",
+                                    "minimum": -500,
+                                    "maximum": 500
+                                  },
+                                  {
+                                    "type": "number",
+                                    "minimum": -500,
+                                    "maximum": 500
+                                  },
+                                  {
+                                    "type": "number",
+                                    "minimum": -500,
+                                    "maximum": 500
+                                  }
+                                ],
+                                "minItems": 3,
+                                "description": "Meters [x, y, z]."
+                              },
+                              "rotation": {
+                                "type": "array",
+                                "additionalItems": false,
+                                "items": [
+                                  {
+                                    "type": "number",
+                                    "minimum": -1,
+                                    "maximum": 1
+                                  },
+                                  {
+                                    "type": "number",
+                                    "minimum": -1,
+                                    "maximum": 1
+                                  },
+                                  {
+                                    "type": "number",
+                                    "minimum": -1,
+                                    "maximum": 1
+                                  },
+                                  {
+                                    "type": "number",
+                                    "minimum": -1,
+                                    "maximum": 1
+                                  }
+                                ],
+                                "minItems": 4,
+                                "description": "Unit quaternion [x, y, z, w]."
+                              },
+                              "scale": {
+                                "type": "array",
+                                "additionalItems": false,
+                                "items": [
+                                  {
+                                    "type": "number",
+                                    "minimum": 0.001,
+                                    "maximum": 100
+                                  },
+                                  {
+                                    "type": "number",
+                                    "minimum": 0.001,
+                                    "maximum": 100
+                                  },
+                                  {
+                                    "type": "number",
+                                    "minimum": 0.001,
+                                    "maximum": 100
+                                  }
+                                ],
+                                "minItems": 3,
+                                "description": "Positive per-axis scale."
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          },
+                          "locked": {
+                            "type": "boolean"
+                          },
+                          "props": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^.*$": {}
+                            }
+                          },
+                          "ext": {
+                            "type": "object",
+                            "patternProperties": {
+                              "^.*$": {}
+                            }
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "New node. Missing fields are filled with type defaults (see capabilities.defaults); the result is fully validated."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Create a node. The ID is generated when omitted.",
+                    "title": "node.add"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId",
+                      "set"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.update"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "set": {
+                        "type": "object",
+                        "patternProperties": {
+                          "^(name|visible|locked|transform(\\.(position|rotation|scale))?|props(\\.[A-Za-z][A-Za-z0-9]{0,40}){0,2}|ext(\\.[A-Za-z0-9_.-]{1,64})?)$": {}
+                        },
+                        "minProperties": 1,
+                        "maxProperties": 50
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Set one or more properties by path. Object values are merged key by key.",
+                    "title": "node.update"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.remove"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Remove a node and all its descendants.",
+                    "title": "node.remove"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.duplicate"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "newId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "offset": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          }
+                        ],
+                        "minItems": 3,
+                        "description": "Meters [x, y, z]."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Copy a node (and descendants). The copy is offset in parent space (default [0.3, 0, 0]).",
+                    "title": "node.duplicate"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId",
+                      "parentId"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.reparent"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "parentId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                            "description": "Stable node ID, unique within the scene."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "keepWorldTransform": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Move a node under another parent. keepWorldTransform (default false) preserves its world pose.",
+                    "title": "node.reparent"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.setTransform"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "position": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          }
+                        ],
+                        "minItems": 3,
+                        "description": "Meters [x, y, z]."
+                      },
+                      "rotation": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          }
+                        ],
+                        "minItems": 4,
+                        "description": "Unit quaternion [x, y, z, w]."
+                      },
+                      "scale": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": 0.001,
+                            "maximum": 100
+                          },
+                          {
+                            "type": "number",
+                            "minimum": 0.001,
+                            "maximum": 100
+                          },
+                          {
+                            "type": "number",
+                            "minimum": 0.001,
+                            "maximum": 100
+                          }
+                        ],
+                        "minItems": 3,
+                        "description": "Positive per-axis scale."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Set any of position / rotation / scale (local).",
+                    "title": "node.setTransform"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId",
+                      "material"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.setMaterial"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "material": {
+                        "type": "object",
+                        "properties": {
+                          "color": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "roughness": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "metalness": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "opacity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "emissiveColor": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "emissiveIntensity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 10
+                          },
+                          "textureAssetId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "description": "ID of an uploaded asset in this gallery."
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "textureRepeat": {
+                            "type": "array",
+                            "additionalItems": false,
+                            "items": [
+                              {
+                                "type": "number",
+                                "minimum": 0.01,
+                                "maximum": 100
+                              },
+                              {
+                                "type": "number",
+                                "minimum": 0.01,
+                                "maximum": 100
+                              }
+                            ],
+                            "minItems": 2,
+                            "description": "Texture tiling [u, v]."
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Change material fields of a wall, floor, ceiling or primitive.",
+                    "title": "node.setMaterial"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId",
+                      "visible"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.setVisibility"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "visible": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Show or hide a node.",
+                    "title": "node.setVisibility"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId",
+                      "text"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "node.setText"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 500
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Change a text label.",
+                    "title": "node.setText"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "assetId"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "artwork.place"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "assetId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "ID of an uploaded asset in this gallery."
+                      },
+                      "parentId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                            "description": "Stable node ID, unique within the scene."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "position": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          }
+                        ],
+                        "minItems": 3,
+                        "description": "Meters [x, y, z]."
+                      },
+                      "rotation": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          }
+                        ],
+                        "minItems": 4,
+                        "description": "Unit quaternion [x, y, z, w]."
+                      },
+                      "width": {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "maximum": 20
+                      },
+                      "title": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Create an artwork panel for an asset, or swap the image of an existing one (nodeId). Height follows the image aspect ratio.",
+                    "title": "artwork.place"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId",
+                      "wallId"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "artwork.hangOnWall"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "wallId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "x": {
+                        "type": "number",
+                        "minimum": -100,
+                        "maximum": 100,
+                        "description": "Offset along the wall from its center (m)."
+                      },
+                      "centerHeight": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 50,
+                        "description": "Height of the artwork center above the wall bottom (m). Default 1.5."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Reparent an artwork onto a wall, facing out from the wall front.",
+                    "title": "artwork.hangOnWall"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId",
+                      "frame"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "artwork.setFrame"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "frame": {
+                        "type": "object",
+                        "properties": {
+                          "style": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "none"
+                              },
+                              {
+                                "type": "string",
+                                "const": "thin"
+                              },
+                              {
+                                "type": "string",
+                                "const": "classic"
+                              },
+                              {
+                                "type": "string",
+                                "const": "modern"
+                              },
+                              {
+                                "type": "string",
+                                "const": "ornate"
+                              }
+                            ],
+                            "description": "Frame geometry style, rendered by the client."
+                          },
+                          "color": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "width": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "description": "Frame border width in meters."
+                          },
+                          "depth": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 0.5,
+                            "description": "Frame depth in meters."
+                          },
+                          "matColor": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "matWidth": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "description": "Mat (passe-partout) width in meters; 0 = no mat."
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Change frame settings of an artwork.",
+                    "title": "artwork.setFrame"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "nodeId"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "room.resize"
+                      },
+                      "nodeId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                        "description": "Stable node ID, unique within the scene."
+                      },
+                      "width": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 200
+                      },
+                      "depth": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 200
+                      },
+                      "height": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 50
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Resize a room. Its shell walls (props.shell set), floor and ceiling children are moved and resized to match.",
+                    "title": "room.resize"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "environment"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "scene.setEnvironment"
+                      },
+                      "environment": {
+                        "type": "object",
+                        "properties": {
+                          "backgroundColor": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "skybox": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "color"
+                              },
+                              {
+                                "type": "string",
+                                "const": "gradient"
+                              },
+                              {
+                                "type": "string",
+                                "const": "studio"
+                              }
+                            ]
+                          },
+                          "gradientTopColor": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "gradientBottomColor": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "ambientColor": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "description": "sRGB hex color \"#rrggbb\"."
+                          },
+                          "ambientIntensity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 10
+                          },
+                          "fog": {
+                            "type": "object",
+                            "required": [
+                              "enabled",
+                              "color",
+                              "near",
+                              "far"
+                            ],
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "color": {
+                                "type": "string",
+                                "pattern": "^#[0-9a-fA-F]{6}$",
+                                "description": "sRGB hex color \"#rrggbb\"."
+                              },
+                              "near": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1000
+                              },
+                              "far": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1000
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        }
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Change background, ambient light and fog. Nested fog fields merge.",
+                    "title": "scene.setEnvironment"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "op",
+                      "position",
+                      "rotation"
+                    ],
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "const": "scene.setViewerAnchor"
+                      },
+                      "position": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -500,
+                            "maximum": 500
+                          }
+                        ],
+                        "minItems": 3,
+                        "description": "Meters [x, y, z]."
+                      },
+                      "rotation": {
+                        "type": "array",
+                        "additionalItems": false,
+                        "items": [
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          }
+                        ],
+                        "minItems": 4,
+                        "description": "Unit quaternion [x, y, z, w]."
+                      },
+                      "roomId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                            "description": "Stable node ID, unique within the scene."
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Move the shared viewpoint used by phone viewers. Head tracking is composed on top by the phone.",
+                    "title": "scene.setViewerAnchor"
+                  }
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 200
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false,
+      "title": "ClientSubmit",
+      "description": "Edit connections only. Same semantics as POST /actions."
+    }
+  ],
+  "title": "ClientMessage"
+}

@@ -6,6 +6,8 @@ import { S3Storage } from '../src/assets/storage.js';
 import { loadConfig, type Config } from '../src/config.js';
 import { createPool, type Db } from '../src/db/pool.js';
 import { setPath } from '../src/scene/engine.js';
+import type { AssistantProvider } from '../src/assistant/provider.js';
+import type { SolanaGateway } from '../src/donations/gateway.js';
 
 try {
   process.loadEnvFile('.env');
@@ -21,19 +23,20 @@ export interface TestServer {
   close(): Promise<void>;
 }
 
-export async function startServer(overrides: (c: Config) => void = () => {}): Promise<TestServer> {
+export async function startServer(overrides: (c: Config) => void = () => {}, opts: { assistantProvider?: AssistantProvider | null; solanaGateway?: SolanaGateway | null } = {}): Promise<TestServer> {
   process.env.NODE_ENV = 'test';
   const config = loadConfig();
   config.databaseUrl = process.env.TEST_DATABASE_URL!;
   config.s3.bucket = process.env.TEST_S3_BUCKET ?? 'gallery-test';
   config.port = 0;
   config.limits.authAttemptsPerMinute = 10_000;
+  config.logLevel = process.env.TEST_LOG_LEVEL ?? "warn";
   config.host = '127.0.0.1';
   overrides(config);
   const db = createPool(config.databaseUrl, false);
   const storage = new S3Storage(config.s3);
   await storage.ensureBucket();
-  const app = await buildApp({ config, db, storage });
+  const app = await buildApp({ config, db, storage, assistantProvider: opts.assistantProvider ?? null, solanaGateway: opts.solanaGateway ?? null });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const addr = app.server.address() as { port: number };
   const base = `http://127.0.0.1:${addr.port}`;
@@ -79,6 +82,7 @@ export function client(base: string, token?: string, extraHeaders: Record<string
     get: <T = any>(p: string, headers?: Record<string, string>) => call<T>('GET', p, undefined, headers),
     post: <T = any>(p: string, b?: unknown, headers?: Record<string, string>) => call<T>('POST', p, b ?? {}, headers),
     patch: <T = any>(p: string, b?: unknown) => call<T>('PATCH', p, b),
+    put: <T = any>(p: string, b?: unknown) => call<T>('PUT', p, b),
     del: <T = any>(p: string) => call<T>('DELETE', p),
     token,
   };

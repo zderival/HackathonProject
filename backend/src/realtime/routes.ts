@@ -6,25 +6,11 @@ import { principalFor, requireUser } from '../http/context.js';
 import { randomToken, sha256 } from '../lib/crypto.js';
 import { AppError, localizedMessage } from '../lib/errors.js';
 import { ErrorResponse, GalleryIdParams } from '../schemas/api.js';
-import { ActionRequest } from '../schemas/operations.js';
 import { ajv } from '../scene/validate.js';
+import { pairingLink } from '../sharing/links.js';
 import { CLOSE, type Connection } from './hub.js';
+import { ClientMessage } from './messages.js';
 
-const ClientMessage = Type.Union([
-  Type.Object({ type: Type.Literal('ping'), t: Type.Optional(Type.Number()) }, { additionalProperties: false }),
-  Type.Object(
-    { type: Type.Literal('resync'), fromRevision: Type.Optional(Type.Integer({ minimum: 0 })) },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      type: Type.Literal('submit'),
-      clientMsgId: Type.String({ maxLength: 100 }),
-      action: ActionRequest,
-    },
-    { additionalProperties: false },
-  ),
-]);
 const validateClientMessage = ajv.compile(ClientMessage);
 
 export async function realtimeRoutes(app: App) {
@@ -35,19 +21,25 @@ export async function realtimeRoutes(app: App) {
     {
       schema: {
         tags: ['realtime'],
-        summary: 'Create a read-only viewer session (phone / preview)',
+        summary: 'Create a read-only viewer session (phone) or a pairing preview session (website -> phone)',
         description:
-          'Returns a vs_ token usable only for reading this gallery (scene, assets, events, view tickets). It can never write, use the assistant or manage permissions, even if the account is an editor. Access is re-evaluated on every use.',
+          'kind "viewer" (default): returns a vs_ token usable only for reading this gallery (scene, assets, events, view tickets). It can never write, use the assistant or manage permissions, even if the account is an editor. Access is re-evaluated on every use. kind "preview" (signed-in users): returns a single-use pairingCode + pairingUrl for a QR code (GET /v1/pairings/qr); the phone exchanges it at POST /v1/pairings/claim for its own vs_ token, so no token is ever shown on screen.',
         params: GalleryIdParams,
         body: Type.Optional(
           Type.Object({ kind: Type.Optional(Type.Union([Type.Literal('viewer'), Type.Literal('preview')])) }, { additionalProperties: false }),
         ),
         response: {
           201: Type.Object({
-            viewerToken: Type.String(),
+            viewerSessionId: Type.String(),
+            viewerToken: Type.Union([Type.String(), Type.Null()], { description: 'null for preview sessions (claimed by the phone).' }),
             galleryId: Type.String(),
             kind: Type.String(),
             expiresAt: Type.String({ format: 'date-time' }),
+            pairingCode: Type.Optional(Type.String()),
+            pairingUrl: Type.Optional(Type.String()),
+            pairingExpiresAt: Type.Optional(Type.String({ format: 'date-time' })),
+            qrPngPath: Type.Optional(Type.String()),
+            qrSvgPath: Type.Optional(Type.String()),
           }),
           404: ErrorResponse,
         },
@@ -58,16 +50,40 @@ export async function realtimeRoutes(app: App) {
       const p = principalFor(req, galleryId);
       await requireAccess(db, galleryId, p, 'view');
       const kind = req.body?.kind ?? 'viewer';
-      if (kind === 'preview' && req.caller.kind !== 'user') throw new AppError('FORBIDDEN');
+      if (kind === 'preview' && req.caller.kind !== 'user') throw new AppError('UNAUTHENTICATED');
       const token = randomToken('vs');
       const expiresAt = new Date(Date.now() + config.auth.viewerSessionTtlSec * 1000);
-      await db.query(
-        `INSERT INTO viewer_sessions (token_hash, gallery_id, user_id, link_token, kind, created_by, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [sha256(token), galleryId, p.userId, p.linkToken ?? null, kind, req.caller.kind === 'user' ? req.caller.userId : null, expiresAt],
+      const pairingCode = kind === 'preview' ? randomToken('pc', 12).slice(3) : null;
+      const pairingExpiresAt = new Date(Date.now() + config.auth.pairingTtlSec * 1000);
+      const { rows } = await db.query(
+        `INSERT INTO viewer_sessions (token_hash, gallery_id, user_id, link_token, kind, created_by, expires_at, pairing_code_hash, pairing_expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [
+          sha256(token),
+          galleryId,
+          p.userId,
+          p.linkToken ?? null,
+          kind,
+          req.caller.kind === 'user' ? req.caller.userId : null,
+          expiresAt,
+          pairingCode ? sha256(pairingCode) : null,
+          pairingCode ? pairingExpiresAt : null,
+        ],
       );
       reply.code(201);
-      return { viewerToken: token, galleryId, kind, expiresAt: expiresAt.toISOString() };
+      const base = { viewerSessionId: rows[0].id as string, galleryId, kind, expiresAt: expiresAt.toISOString() };
+      if (!pairingCode) return { ...base, viewerToken: token };
+      // Preview: the token generated above is discarded; the phone gets a fresh one on claim.
+      const qr = `/v1/pairings/qr?code=${encodeURIComponent(pairingCode)}`;
+      return {
+        ...base,
+        viewerToken: null,
+        pairingCode,
+        pairingUrl: pairingLink(config, pairingCode),
+        pairingExpiresAt: pairingExpiresAt.toISOString(),
+        qrPngPath: `${qr}&format=png`,
+        qrSvgPath: `${qr}&format=svg`,
+      };
     },
   );
 

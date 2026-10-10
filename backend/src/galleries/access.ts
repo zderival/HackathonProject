@@ -81,6 +81,18 @@ export async function resolveAccess(db: DbClient, galleryId: string, p: Principa
   };
 }
 
+// Editors that currently count toward LIMIT_EDITORS_PER_GALLERY (explicit editors plus
+// link editors whose link is still active). The owner is not counted.
+export async function countEditors(db: DbClient, galleryId: string, exceptUserId: string | null = null): Promise<number> {
+  const { rows } = await db.query(
+    `SELECT count(*)::int AS n FROM gallery_members m JOIN galleries g ON g.id = m.gallery_id
+     WHERE m.gallery_id = $1 AND m.role = 'editor' AND ($2::uuid IS NULL OR m.user_id <> $2)
+       AND (m.source <> 'link' OR (g.sharing_mode = 'edit_link' AND m.link_version = g.link_version))`,
+    [galleryId, exceptUserId],
+  );
+  return rows[0].n;
+}
+
 // Throws unless the principal has `need`. Missing access to a gallery reports 404 so
 // gallery IDs cannot be probed; lacking a higher capability reports 403.
 export async function requireAccess(db: DbClient, galleryId: string, p: Principal, need: Capability): Promise<GalleryAccess> {

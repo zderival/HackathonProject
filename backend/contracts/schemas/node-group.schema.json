@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "node-group.schema.json",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "name",
+    "parentId",
+    "transform",
+    "visible",
+    "locked",
+    "props",
+    "ext"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "description": "Stable node ID, unique within the scene."
+    },
+    "type": {
+      "type": "string",
+      "const": "group"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "parentId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "description": "Stable node ID, unique within the scene."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "transform": {
+      "type": "object",
+      "required": [
+        "position",
+        "rotation",
+        "scale"
+      ],
+      "properties": {
+        "position": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            },
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            },
+            {
+              "type": "number",
+              "minimum": -500,
+              "maximum": 500
+            }
+          ],
+          "minItems": 3,
+          "description": "Meters [x, y, z]."
+        },
+        "rotation": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            },
+            {
+              "type": "number",
+              "minimum": -1,
+              "maximum": 1
+            }
+          ],
+          "minItems": 4,
+          "description": "Unit quaternion [x, y, z, w]."
+        },
+        "scale": {
+          "type": "array",
+          "additionalItems": false,
+          "items": [
+            {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 100
+            },
+            {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 100
+            },
+            {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 100
+            }
+          ],
+          "minItems": 3,
+          "description": "Positive per-axis scale."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Local transform relative to the parent node."
+    },
+    "visible": {
+      "type": "boolean"
+    },
+    "locked": {
+      "type": "boolean",
+      "description": "Editor hint: locked nodes are not selectable in the website editor."
+    },
+    "props": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ext": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9_.-]{1,64}$": {}
+      },
+      "description": "Client extension metadata. Opaque to the server, at most 4096 bytes as JSON."
+    }
+  },
+  "additionalProperties": false,
+  "title": "group node"
+}

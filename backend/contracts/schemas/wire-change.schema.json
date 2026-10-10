@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wire-change.schema.json",
+  "anyOf": [
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "node"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "node.add"
+        },
+        "node": {
+          "description": "Full SceneNode."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "nodeId"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "node.remove"
+        },
+        "nodeId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "description": "Stable node ID, unique within the scene."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "nodeId",
+        "path",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "node.set"
+        },
+        "nodeId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "description": "Stable node ID, unique within the scene."
+        },
+        "path": {
+          "type": "string"
+        },
+        "value": {}
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "path",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "scene.set"
+        },
+        "path": {
+          "type": "string",
+          "description": "e.g. \"environment.fog.color\" or \"viewerAnchor\"."
+        },
+        "value": {}
+      }
+    }
+  ]
+}

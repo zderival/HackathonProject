@@ -21,6 +21,16 @@ import { langFor, resolveCaller } from './http/context.js';
 import { AppError, ERROR_STATUS, localizedMessage, type ErrorCode } from './lib/errors.js';
 import { RealtimeHub } from './realtime/hub.js';
 import { realtimeRoutes } from './realtime/routes.js';
+import { sharingRoutes } from './sharing/routes.js';
+import { FakeProvider } from './assistant/fake.js';
+import { GeminiProvider } from './assistant/gemini.js';
+import type { AssistantProvider } from './assistant/provider.js';
+import { assistantRoutes } from './assistant/routes.js';
+import { capabilitiesRoutes } from './capabilities/routes.js';
+import { Web3Gateway, type SolanaGateway } from './donations/gateway.js';
+import { donationRoutes } from './donations/routes.js';
+import { DonationService } from './donations/service.js';
+import { AssistantService } from './assistant/service.js';
 import { ajv } from './scene/validate.js';
 
 export interface Deps {
@@ -31,17 +41,20 @@ export interface Deps {
   actions: ActionService;
   assets: AssetService;
   hub: RealtimeHub;
+  assistant: AssistantService;
+  donations: DonationService;
 }
 
 export type App = FastifyInstance<RawServerDefault, RawRequestDefaultExpression, RawReplyDefaultExpression, FastifyBaseLogger, TypeBoxTypeProvider> & {
   deps: Deps;
 };
 
-export async function buildApp(opts: { config: Config; db: Db; storage: ObjectStorage }): Promise<App> {
+// assistantProvider overrides the configured provider (tests inject deterministic fakes).
+export async function buildApp(opts: { config: Config; db: Db; storage: ObjectStorage; assistantProvider?: AssistantProvider | null; solanaGateway?: SolanaGateway | null }): Promise<App> {
   const { config, db, storage } = opts;
   const fastify = Fastify({
     logger:
-      config.nodeEnv === 'development'
+      config.nodeEnv === 'development' && hasPrettyLogger()
         ? { level: config.logLevel, transport: { target: 'pino-pretty', options: { singleLine: true } } }
         : { level: config.logLevel, redact: ['req.headers.authorization', 'req.query.ticket'] },
     trustProxy: config.trustProxy,
@@ -71,7 +84,23 @@ export async function buildApp(opts: { config: Config; db: Db; storage: ObjectSt
     log: app.log,
   }));
   const assets = new AssetService(db, storage, config);
-  app.decorate('deps', { config, db, storage, auth, actions, assets, hub });
+  const assistant = new AssistantService({
+    db,
+    config,
+    actions,
+    storage,
+    hub,
+    provider: opts.assistantProvider !== undefined ? opts.assistantProvider : providerFromConfig(config),
+    log: app.log,
+  });
+  const donations = new DonationService({
+    db,
+    config,
+    gateway: opts.solanaGateway !== undefined ? opts.solanaGateway : config.solana.enabled ? new Web3Gateway(config.solana.rpcUrl) : null,
+    hub,
+    log: app.log,
+  });
+  app.decorate('deps', { config, db, storage, auth, actions, assets, hub, assistant, donations });
 
   await app.register(cors, {
     origin: config.corsOrigins.includes('*') ? true : config.corsOrigins,
@@ -167,11 +196,17 @@ export async function buildApp(opts: { config: Config; db: Db; storage: ObjectSt
     await actionRoutes(s);
     await assetRoutes(s);
     await realtimeRoutes(s);
+    await sharingRoutes(s);
+    await assistantRoutes(s);
+    await capabilitiesRoutes(s);
+    await donationRoutes(s);
   });
 
   const heartbeat = setInterval(() => hub.heartbeat(), config.heartbeatMs);
   heartbeat.unref();
   app.addHook('onClose', async () => {
+    assistant.shutdown();
+    donations.stop();
     clearInterval(heartbeat);
     hub.closeAll(1001, 'server shutting down');
   });
@@ -183,3 +218,21 @@ export async function buildApp(opts: { config: Config; db: Db; storage: ObjectSt
 const addFormats = ((addFormatsImport as any).default ?? addFormatsImport) as (a: Ajv) => Ajv;
 const qsAjv = addFormats(new Ajv({ coerceTypes: 'array', useDefaults: true, removeAdditional: false, strict: false }));
 const querystringAjv = (schema: object) => qsAjv.compile(schema);
+
+function providerFromConfig(config: Config): AssistantProvider | null {
+  const a = config.assistant;
+  if (a.provider === 'gemini')
+    return new GeminiProvider({ apiKey: a.geminiApiKey, planModel: a.planModel, ttsModel: a.ttsModel, ttsVoice: a.ttsVoice, timeoutMs: a.timeoutMs, ttsTimeoutMs: a.ttsTimeoutMs });
+  if (a.provider === 'fake') return new FakeProvider();
+  return null;
+}
+
+// pino-pretty is a dev dependency; production images log plain JSON even if NODE_ENV says development.
+function hasPrettyLogger() {
+  try {
+    import.meta.resolve('pino-pretty');
+    return true;
+  } catch {
+    return false;
+  }
+}

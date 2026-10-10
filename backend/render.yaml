@@ -1,0 +1,45 @@
+# Alternative deployment: Render Blueprint (web service + managed PostgreSQL).
+# Render's filesystem is ephemeral: object storage must be external (Vultr Object
+# Storage, Cloudflare R2, AWS S3, ...). Render supports WebSockets on web services.
+services:
+  - type: web
+    name: gallery-backend
+    runtime: docker
+    plan: starter
+    numInstances: 1 # single instance: realtime fan-out is in-process (see docs/deployment.md)
+    healthCheckPath: /ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gallery-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: PUBLIC_API_URL
+        sync: false
+      - key: PUBLIC_WEB_URL
+        sync: false
+      - key: DEEP_LINK_BASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+databases:
+  - name: gallery-db
+    plan: basic-256mb

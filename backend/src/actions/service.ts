@@ -88,6 +88,13 @@ export interface Prepared {
   label?: string;
 }
 
+// Used when the assistant triggers undo/redo: links the action to the command and lets
+// the command be finalized atomically with the commit.
+export interface AiHooks {
+  aiCommandId?: string;
+  beforeCommit?: (client: pg.PoolClient) => Promise<void>;
+}
+
 export interface PrepareContext {
   client: pg.PoolClient;
   scene: SceneT;
@@ -260,8 +267,10 @@ export class ActionService {
   // by committing its guarded inverse as a new revision. Collaborators' later changes
   // to other properties are preserved; if anyone changed a property the inverse would
   // restore, the undo is refused with UNDO_CONFLICT instead of overwriting their edit.
-  undo(galleryId: string, principal: Principal & { userId: string }, opts: { requestId: string; actionId?: string }) {
+  undo(galleryId: string, principal: Principal & { userId: string }, opts: { requestId: string; actionId?: string } & AiHooks) {
     return this.commit({
+      aiCommandId: opts.aiCommandId,
+      beforeCommit: opts.beforeCommit,
       galleryId,
       principal,
       source: 'undo',
@@ -294,8 +303,10 @@ export class ActionService {
 
   // Re-applies the caller's most recently undone action, provided they made no new
   // manual/AI edit since that undo (a new edit clears the redo stack).
-  redo(galleryId: string, principal: Principal & { userId: string }, opts: { requestId: string }) {
+  redo(galleryId: string, principal: Principal & { userId: string }, opts: { requestId: string } & AiHooks) {
     return this.commit({
+      aiCommandId: opts.aiCommandId,
+      beforeCommit: opts.beforeCommit,
       galleryId,
       principal,
       source: 'redo',

@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "assistant-command.schema.json",
+  "type": "object",
+  "required": [
+    "id",
+    "conversationId",
+    "galleryId",
+    "requestId",
+    "status",
+    "final",
+    "inputKind",
+    "text",
+    "transcript",
+    "language",
+    "intent",
+    "reply",
+    "question",
+    "suggestions",
+    "actionId",
+    "revision",
+    "error",
+    "speech",
+    "createdAt",
+    "completedAt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable command ID: poll it, or wait for WebSocket \"assistant\" messages."
+    },
+    "conversationId": {
+      "type": "string"
+    },
+    "galleryId": {
+      "type": "string"
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "status": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "queued"
+        },
+        {
+          "type": "string",
+          "const": "processing"
+        },
+        {
+          "type": "string",
+          "const": "applied"
+        },
+        {
+          "type": "string",
+          "const": "needs_clarification"
+        },
+        {
+          "type": "string",
+          "const": "answered"
+        },
+        {
+          "type": "string",
+          "const": "failed"
+        },
+        {
+          "type": "string",
+          "const": "cancelled"
+        }
+      ],
+      "description": "applied: the edit/undo/redo committed (see actionId/revision). needs_clarification: nothing changed; show reply + question. answered: question/suggestions only; nothing changed. failed: nothing changed; see error."
+    },
+    "final": {
+      "type": "boolean",
+      "description": "True once status will not change any more (speech may still become ready)."
+    },
+    "inputKind": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "text"
+        },
+        {
+          "type": "string",
+          "const": "audio"
+        }
+      ]
+    },
+    "text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "transcript": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "What the model heard (audio input). Show it so users can correct mistakes."
+    },
+    "language": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "en"
+        },
+        {
+          "type": "string",
+          "const": "ht"
+        },
+        {
+          "type": "string",
+          "const": "fr"
+        },
+        {
+          "type": "string",
+          "const": "es"
+        },
+        {
+          "type": "string",
+          "const": "ko"
+        }
+      ],
+      "description": "en (default), ht (Haitian Creole), fr, es, ko"
+    },
+    "intent": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reply": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Written reply in `language`. Available before speech."
+    },
+    "question": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Follow-up question (is it right? / clarification)."
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional ideas. Never applied unless the user asks."
+    },
+    "actionId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Committed action (one undo step) when applied."
+    },
+    "revision": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "code",
+            "message"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "details": {}
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "speech": {
+      "type": "object",
+      "required": [
+        "status",
+        "path",
+        "error"
+      ],
+      "properties": {
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "disabled"
+            },
+            {
+              "type": "string",
+              "const": "pending"
+            },
+            {
+              "type": "string",
+              "const": "ready"
+            },
+            {
+              "type": "string",
+              "const": "failed"
+            }
+          ]
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "GET this for a signed audio URL when ready."
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completedAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "title": "AssistantCommand"
+}

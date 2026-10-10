@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "viewer-anchor.schema.json",
+  "type": "object",
+  "required": [
+    "position",
+    "rotation",
+    "roomId"
+  ],
+  "properties": {
+    "position": {
+      "type": "array",
+      "additionalItems": false,
+      "items": [
+        {
+          "type": "number",
+          "minimum": -500,
+          "maximum": 500
+        },
+        {
+          "type": "number",
+          "minimum": -500,
+          "maximum": 500
+        },
+        {
+          "type": "number",
+          "minimum": -500,
+          "maximum": 500
+        }
+      ],
+      "minItems": 3,
+      "description": "Meters [x, y, z]."
+    },
+    "rotation": {
+      "type": "array",
+      "additionalItems": false,
+      "items": [
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      ],
+      "minItems": 4,
+      "description": "Base orientation; the phone composes its local head rotation on top: world = anchor * head."
+    },
+    "roomId": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "description": "Stable node ID, unique within the scene."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "description": "Website-controlled viewpoint for phone viewers (world space, eye position)."
+}
