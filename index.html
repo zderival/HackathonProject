@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="js/api/boot.js"></script>
+<title>My World</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Give others a place to experience your ideas, not just imagine them.">
+<meta name="theme-color" content="#0b0a12">
+<meta property="og:title" content="My World">
+<meta property="og:description" content="Give others a place to experience your ideas, not just imagine them.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23ffd29a'/%3E%3Cstop offset='1' stop-color='%23f0a25c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='%230b0a12'/%3E%3Cpath d='M12 46V30a20 20 0 0 1 40 0v16' fill='none' stroke='url(%23g)' stroke-width='6' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='38' r='6' fill='url(%23g)'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=DM+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/space.css">
+<link rel="stylesheet" href="css/glass.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/topbar.css">
+<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/dock.css">
+<link rel="stylesheet" href="css/profile.css">
+<link rel="stylesheet" href="css/comments.css">
+<link rel="stylesheet" href="css/settings.css">
+<link rel="stylesheet" href="css/art.css">
+<link rel="stylesheet" href="css/sheet.css">
+<link rel="stylesheet" href="css/toast.css">
+<link rel="stylesheet" href="css/world.css">
+<link rel="stylesheet" href="css/cloud.css">
+</head>
+<body>
+<noscript><p style="padding:24px;font:16px system-ui;color:#f5f1ea">My World needs JavaScript to run.</p></noscript>
+
+<!-- 1, 2: ambient space -->
+<div id="hero" aria-hidden="true"><div></div><div></div></div>
+<canvas id="flow" aria-hidden="true"></canvas>
+
+<!-- top bar -->
+<header class="topbar">
+  <button class="brand glass pill press" id="brandBtn" type="button" aria-label="Home">
+    <span class="avatar" id="brandAv"></span><b>My <span id="brandName">World</span></b>
+  </button>
+  <div class="search" id="search" role="search">
+    <label class="search-field glass pill">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <span class="sr">Search artwork</span>
+      <input id="q" type="search" autocomplete="off" placeholder="Search paintings, studies, dates…" role="combobox" aria-expanded="false" aria-controls="resList" aria-autocomplete="list">
+      <kbd>/</kbd>
+      <button class="x press" id="qClear" type="button" aria-label="Clear search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </label>
+    <div class="results glass"><div class="results-list" id="resList" role="listbox" aria-label="Search results"></div></div>
+  </div>
+  <button class="iconbtn glass pill press me" id="meBtn" type="button" aria-label="Open profile"><span class="avatar" id="topAv" style="--s:36px"></span></button>
+</header>
+
+<!-- 3: HOME -->
+<main id="home" class="view on" aria-label="Gallery">
+  <nav class="chips" id="chips" aria-label="Filter by type"></nav>
+  <div class="space" id="space" aria-roledescription="carousel" aria-label="Artwork, drag or use arrow keys to move">
+    <div class="ring" id="ring"></div>
+  </div>
+  <div class="caption">
+    <div class="cap-card glass pill" id="capCard">
+      <div class="cap-text" aria-live="polite">
+        <h2 id="capT">—</h2>
+        <p><span id="capK"></span> <span class="d" id="capD"></span></p>
+      </div>
+      <div class="nav-arrows">
+        <button class="ctl glass press" id="ringPrev" type="button" aria-label="Previous piece"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="ctl glass press" id="ringNext" type="button" aria-label="Next piece"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+      <button class="open-btn glass pill press" id="openBtn" type="button">View <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></button>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center"><div class="dots" id="dots"></div><span class="cap-n" id="capN"></span></div>
+  </div>
+</main>
+
+<!-- PROFILE -->
+<section id="profile" class="view scroll page" aria-label="Profile">
+  <div class="page-inner">
+    <div class="panel glass">
+      <div class="prof-head">
+        <span class="avatar" id="profAv"></span>
+        <div>
+          <div class="eyebrow">Digital painting · Characters · Backgrounds</div>
+          <h1 id="profName">My <span>World</span></h1>
+          <div class="prof-meta" id="profMeta"></div>
+          <p class="prof-bio" id="profBio"></p>
+        </div>
+        <div class="prof-actions">
+          <button class="btn primary glass pill press" id="followBtn" type="button">Follow</button>
+          <button class="btn glass pill press" id="editBtn" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit profile</button>
+          <button class="btn glass pill press" id="shareBtn" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4M12 2v13"/></svg>Share</button>
+        </div>
+      </div>
+      <div class="stats glass" id="stats"></div>
+    </div>
+
+    <div class="seg glass" role="tablist" id="profTabs" aria-label="Profile sections">
+      <span class="blob"></span>
+      <button role="tab" data-tab="works" aria-selected="true">Works<span class="n" id="nWorks"></span></button>
+      <button role="tab" data-tab="relations" aria-selected="false">Relations<span class="n" id="nRel"></span></button>
+      <button role="tab" data-tab="followers" aria-selected="false">Followers<span class="n" id="nFol"></span></button>
+      <button role="tab" data-tab="viewers" aria-selected="false">Viewers<span class="n" id="nView"></span></button>
+      <button role="tab" data-tab="comments" aria-selected="false">Comments<span class="n" id="nCom"></span></button>
+    </div>
+
+    <div class="tabpanel" data-panel="works"><div class="panel glass"><div class="wall" id="wall"></div></div></div>
+
+    <div class="tabpanel" data-panel="relations" hidden>
+      <div class="panel glass">
+        <div class="impact-hero">
+          <div class="impact-ring"><svg viewBox="0 0 120 120" id="impactSvg"></svg><div class="c"><b id="impactTotal">0</b><small>people impacted</small></div></div>
+          <div>
+            <div class="eyebrow">Relations</div>
+            <h2 style="margin:6px 0 4px;font:800 26px/1.1 var(--display);letter-spacing:-.02em">The people this work has reached</h2>
+            <p class="muted" style="margin:0 0 16px;font-size:14px">Everyone who says a piece here inspired, taught, or worked with them.</p>
+            <div class="impact-bars" id="impactBars"></div>
+          </div>
+        </div>
+      </div>
+      <div class="filter-row" style="margin-top:4px">
+        <div class="chips" id="relChips" style="padding:0;justify-content:flex-start"></div>
+        <div class="segsm" id="relSort" role="group" aria-label="Sort"><button type="button" data-v="impact" aria-pressed="true">Most impact</button><button type="button" data-v="recent" aria-pressed="false">Recent</button></div>
+      </div>
+      <div class="people" id="people"></div>
+    </div>
+
+    <div class="tabpanel" data-panel="followers" hidden>
+      <div class="two-col">
+        <div class="panel glass"><div class="eyebrow">Followers</div><div class="list" id="folList" style="margin-top:12px"></div></div>
+        <div class="panel glass"><div class="eyebrow">Following</div><div class="list" id="fingList" style="margin-top:12px"></div></div>
+      </div>
+    </div>
+
+    <div class="tabpanel" data-panel="viewers" hidden>
+      <div class="two-col">
+        <div class="panel glass">
+          <div class="eyebrow">Profile views · last 7 days</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:10px"><span class="big-num" id="viewsWeek">0</span><span class="delta">▲ 18% vs last week</span></div>
+          <div class="spark" id="spark"></div>
+          <div class="eyebrow" style="margin-top:26px">Most-viewed pieces</div>
+          <div class="list" id="topPieces" style="margin-top:10px"></div>
+        </div>
+        <div class="panel glass"><div class="eyebrow">Recent viewers</div><div class="list" id="viewList" style="margin-top:12px"></div></div>
+      </div>
+    </div>
+
+    <div class="tabpanel" data-panel="comments" hidden>
+      <div class="panel glass comments-panel">
+        <h2>Guestbook</h2>
+        <p class="muted" style="margin:4px 0 16px;font-size:14px">Leave a note for the artist.</p>
+        <div id="profCompose"></div>
+        <div id="profComments" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section id="settings" class="view scroll page" aria-label="Settings">
+  <div class="page-inner" style="max-width:720px">
+    <div style="padding:0 6px"><div class="eyebrow">Settings</div><h1 style="margin:8px 0 0;font:800 clamp(36px,6vw,56px)/.95 var(--display);letter-spacing:-.04em">Make it yours</h1></div>
+
+    <div class="set-group glass">
+      <h3>Glass</h3>
+      <div class="set"><div class="lab"><b>Blur depth</b><small>How frosted the glass surfaces look</small></div><input type="range" min="4" max="48" data-s="blur" aria-label="Blur depth"><output data-o="blur"></output></div>
+      <div class="set"><div class="lab"><b>Material</b><small>Clear shows more of the art behind</small></div><div class="segsm" data-seg="tint"><button type="button" data-v="clear">Clear</button><button type="button" data-v="frosted">Frosted</button><button type="button" data-v="tinted">Tinted</button></div></div>
+      <div class="set"><div class="lab"><b>Accent</b><small>Highlights, buttons and glow</small></div><div class="swatches" id="swatches"></div></div>
+      <div class="set"><div class="lab"><b>Follow the art</b><small>Tint the space with each piece's colors</small></div><input class="switch" type="checkbox" data-s="followHue" aria-label="Follow the art"></div>
+    </div>
+
+    <div class="set-group glass">
+      <h3>Motion</h3>
+      <div class="set"><div class="lab"><b>Flowing space</b><small>Ribbons of light drifting behind the gallery</small></div><input class="switch" type="checkbox" data-s="ambient" aria-label="Flowing space"></div>
+      <div class="set"><div class="lab"><b>Flow intensity</b></div><input type="range" min="10" max="100" data-s="intensity" aria-label="Flow intensity"><output data-o="intensity"></output></div>
+      <div class="set"><div class="lab"><b>Auto-rotate</b><small>Drift to the next piece when idle</small></div><input class="switch" type="checkbox" data-s="autoRotate" aria-label="Auto-rotate"></div>
+      <div class="set"><div class="lab"><b>Ring curvature</b><small>How far the gallery bends around you</small></div><input type="range" min="8" max="40" data-s="curve" aria-label="Ring curvature"><output data-o="curve"></output></div>
+      <div class="set"><div class="lab"><b>Floor reflections</b></div><input class="switch" type="checkbox" data-s="reflections" aria-label="Floor reflections"></div>
+      <div class="set"><div class="lab"><b>Reduce motion</b><small>Turns off animation and parallax</small></div><input class="switch" type="checkbox" data-s="calm" aria-label="Reduce motion"></div>
+    </div>
+
+    <div class="set-group glass">
+      <h3>Community</h3>
+      <div class="set"><div class="lab"><b>Show viewers</b><small>Display the Viewers tab on your profile</small></div><input class="switch" type="checkbox" data-s="showViewers" aria-label="Show viewers"></div>
+      <div class="set"><div class="lab"><b>Allow comments</b></div><input class="switch" type="checkbox" data-s="allowComments" aria-label="Allow comments"></div>
+      <div class="set"><div class="lab"><b>Creator mode</b><small>Show edit buttons on your pieces and profile</small></div><input class="switch" type="checkbox" data-s="owner" aria-label="Creator mode"></div>
+    </div>
+
+    <div class="set-group glass">
+      <h3>Donations</h3>
+      <div class="set"><div class="lab"><b>Accept donations</b><small>Show a support panel on every piece</small></div><input class="switch" type="checkbox" data-s="donations" aria-label="Accept donations"></div>
+      <div class="set"><div class="lab"><b>Donation link</b><small>Your Ko-fi, PayPal.me, Buy Me a Coffee or Stripe link. Put <code>{amount}</code> where the amount goes, e.g. paypal.me/you/{amount}</small></div><input class="field" type="url" data-s="donateLink" placeholder="https://ko-fi.com/yourname" aria-label="Donation link"></div>
+      <div class="set"><div class="lab"><b>Currency symbol</b></div><input class="field" type="text" maxlength="3" data-s="currency" style="max-width:80px;text-align:center" aria-label="Currency symbol"></div>
+      <p class="note">Payments happen on your provider's page; this gallery never collects card details.</p>
+    </div>
+
+    <div class="set-group glass">
+      <h3>Data</h3>
+      <div class="set"><div class="lab"><b>Reset everything</b><small>Clears comments, likes, edits and settings saved in this browser</small></div><button class="btn glass pill press sm" id="resetBtn" type="button">Reset</button></div>
+      <p class="note">Followers, viewers, relations and starter comments are sample data so you can see the layout. Replace <code>SAMPLE</code> in the script with your real data or an API.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WORLD: your own dome, edited live -->
+<section id="world" class="view" aria-label="Your VR dome">
+  <div id="worldStage"></div>
+  <div class="w-loading glass" id="wLoad"><b>Building your dome…</b><small>One moment</small></div>
+  <div class="w-live glass pill" id="wLive"><i></i><span>Live view</span></div>
+  <div class="w-join glass" id="wJoin" role="dialog" aria-live="polite" hidden>
+    <div class="w-join-logo">My <span>World</span></div>
+    <b id="wJoinTitle">Joining the world…</b>
+    <small id="wJoinMsg">Connecting to the creator</small>
+    <div class="w-join-btns">
+      <button class="btn primary press" id="wJoinMotion" type="button">Look around with my phone</button>
+      <button class="btn glass press" id="wJoinGog" type="button">Use a headset (split screen)</button>
+      <button class="btn glass press" id="wJoinDrag" type="button">Just drag to look</button>
+    </div>
+    <small id="wJoinNote"></small>
+  </div>
+  <div class="w-empty glass" id="wEmpty" hidden><b>Your dome is empty</b><small>Drop pictures, videos or text anywhere, or press Upload in the panel.</small></div>
+  <aside class="studio glass" id="studio" aria-label="Dome studio"></aside>
+  <div class="w-bottom">
+    <span class="w-hint glass pill">Drag to look · videos play when they are under the dot · scroll over the selected item to resize it</span>
+    <button class="btn glass pill press" id="wVisitor" type="button" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>Preview as visitor</span></button>
+    <button class="btn glass pill press" id="wPop" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M10 6H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg><span>Live window</span></button>
+    <button class="btn primary glass pill press" id="wVR" type="button" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4l-2-3h-2l-2 3H5a2 2 0 0 1-2-2Z"/><circle cx="8" cy="11.5" r="1.5"/><circle cx="16" cy="11.5" r="1.5"/></svg>Enter VR</button>
+    <button class="btn glass pill press" id="wMotion" type="button" aria-pressed="false" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M3 9c-1 1.8-1 4.2 0 6M21 9c1 1.8 1 4.2 0 6"/></svg><span>Motion look</span></button>
+    <button class="btn glass pill press" id="wGog" type="button">Phone goggle mode</button>
+    <button class="btn glass pill press" id="wSound" type="button" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg><span>Sound on</span></button>
+    <button class="ctl glass press" id="wCenter" type="button" aria-label="Recenter view" title="Recenter"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+  </div>
+  <button class="ctl glass press" id="wExitGog" type="button" aria-label="Exit goggle mode" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+</section>
+
+<!-- dock -->
+<nav class="dock glass" id="dock" aria-label="Main">
+  <span class="blob"></span>
+  <button type="button" data-go="home" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 15 5-5 5 5M14 13l2-2 5 5"/></svg><span>Gallery</span></button>
+  <button type="button" data-go="world"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4l-2-3h-2l-2 3H5a2 2 0 0 1-2-2Z"/><circle cx="8" cy="11.5" r="1.4"/><circle cx="16" cy="11.5" r="1.4"/></svg><span>World</span></button>
+  <button type="button" data-go="search"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search</span></button>
+  <button type="button" data-go="profile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profile</span></button>
+  <button type="button" data-go="settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Settings</span></button>
+</nav>
+
+<!-- ART PAGE -->
+<section id="art" aria-label="Artwork" aria-modal="true" role="dialog">
+  <div class="veil"></div>
+  <div class="art-scroll" id="artScroll">
+    <div class="art-grid">
+      <div class="art-stage" id="artStage">
+        <button class="ctl glass press close" id="artClose" type="button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        <button class="ctl glass press prev" id="artPrev" type="button" aria-label="Previous piece"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="ctl glass press next" id="artNext" type="button" aria-label="Next piece"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+        <div class="art-media" id="artMedia"></div>
+        <span class="count glass" id="artCount"></span>
+      </div>
+      <div class="art-side">
+        <div class="panel glass art-title">
+          <div class="eyebrow" id="artKind"></div>
+          <h1 id="artT"></h1>
+          <p id="artD"></p>
+          <p class="desc" id="artDesc"></p>
+          <div class="art-acts">
+            <button class="btn glass press" id="likeBtn" type="button"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 6a5 5 0 0 1 9.2 5c-2.2 4.6-9.2 9-9.2 9Z"/></svg><span id="likeN">0</span></button>
+            <span class="btn glass" style="background:rgba(255,255,255,.04);font-weight:500"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span id="viewN">0</span></span>
+            <button class="btn glass press" id="artShare" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4M12 2v13"/></svg>Share</button>
+            <button class="btn glass press" id="artEdit" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit</button>
+          </div>
+          <div class="art-by"><span class="avatar" id="artAv"></span><div><b id="artByName"></b><small id="artByFol"></small></div><button class="btn primary glass pill press sm" id="artFollow" type="button">Follow</button></div>
+        </div>
+
+        <div class="panel glass donate" id="donatePanel">
+          <div class="eyebrow">Donate</div>
+          <h2 style="margin-top:8px">Support this piece</h2>
+          <p class="lead" id="donLead">Tips go straight to the artist and help fund the next painting.</p>
+          <div class="amounts" id="amounts" role="group" aria-label="Amount"></div>
+          <div class="custom"><span id="curSym">$</span><input class="field" id="customAmt" type="number" min="1" step="1" inputmode="decimal" placeholder="Custom amount" aria-label="Custom amount"></div>
+          <textarea class="field msg" id="donMsg" maxlength="200" placeholder="Add a note to the artist (optional)" aria-label="Note to the artist"></textarea>
+          <button class="btn primary glass go press" id="donGo" type="button">Donate</button>
+          <p class="fine" id="donFine"></p>
+          <div class="supporters" id="supporters"></div>
+        </div>
+
+        <div class="panel glass comments-panel" id="artComments">
+          <h2>Comments <span class="muted" id="artComN" style="font:400 14px var(--mono)"></span></h2>
+          <div id="artCompose" style="margin-top:14px"></div>
+          <div id="artComList" style="margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EDIT SHEET (profile + piece) -->
+<dialog class="sheet" id="editSheet" aria-labelledby="editTitle">
+  <div class="sheet-body glass">
+    <h2 id="editTitle">Edit profile</h2>
+    <p class="muted" style="margin:0;font-size:14px" id="editSub">Changes save in this browser.</p>
+    <form id="editForm" method="dialog"></form>
+  </div>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<!-- The timelapse lives here and is moved into the ring or the art page as needed, so the file is only loaded once. -->
+<div id="videoHome" hidden>
+  <video id="timelapse" poster="thumbs/video-poster.jpg" muted loop playsinline preload="metadata">
+    <source src="media/timelapse.webm" type="video/webm">
+    <source src="media/timelapse.mp4" type="video/mp4">
+  </video>
+</div>
+
+<!-- Scripts run in this order; each file only relies on the ones above it. -->
+<script src="js/data/pieces.js"></script>
+<script src="js/data/sample.js"></script>
+<script src="js/core/state.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/ui/settings.js"></script>
+<script src="js/gallery/ring.js"></script>
+<script src="js/gallery/flow.js"></script>
+<script src="js/ui/search.js"></script>
+<script src="js/ui/router.js"></script>
+<script src="js/profile/profile.js"></script>
+<script src="js/ui/comments.js"></script>
+<script src="js/art/art.js"></script>
+<script src="js/gallery/video.js"></script>
+<script src="js/ui/edit.js"></script>
+<script src="js/vr/math.js"></script>
+<script src="js/vr/data.js"></script>
+<script src="js/vr/shaders.js"></script>
+<script src="js/vr/geometry.js"></script>
+<script src="js/vr/store.js"></script>
+<script src="js/api/client.js"></script>
+<script src="js/api/scenemap.js"></script>
+<script src="js/api/cloud.js"></script>
+<script src="js/vr/qrcode.js"></script>
+<script src="js/vr/world.js"></script>
+<script src="js/vr/assistant.js"></script>
+<script src="js/api/cloud-ui.js"></script>
+<script src="js/vr/studio.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

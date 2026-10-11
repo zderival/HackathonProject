@@ -1,0 +1,50 @@
+/* ==========================================================================
+   My World: liquid glass edition
+   Layers, back to front:
+     1. #hero      blurred, enlarged copy of the focused piece (cross-fades)
+     2. #flow      canvas of flowing light ribbons and drifting particles
+     3. views      home (3D ring), profile, settings
+     4. chrome     top bar, search, bottom dock
+     5. overlays   art page, edit sheet, toasts
+   ========================================================================== */
+:root {
+  --ground: #0b0a12;
+  --ink: #f5f1ea;
+  --muted: rgba(245, 241, 234, .62);
+  --faint: rgba(245, 241, 234, .38);
+  --accent: #f0a25c;
+  --hue: 30;
+  --blur: 26px;
+  --glass-a: .10;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --spring: cubic-bezier(.34, 1.4, .5, 1);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; color: var(--ink); font: 15px/1.5 var(--body);
+  background: var(--ground); overflow: hidden;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img { display: block; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Reduce motion: turned on in Settings, or automatically by the OS preference. */
+.calm *, .calm *::before, .calm *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+
+/* polish: images fade in instead of popping, nicer selection and scrollbars */
+img.fade { opacity: 0; transition: opacity .7s var(--ease); }
+img.fade.loaded { opacity: 1; }
+::selection { background: color-mix(in oklab, var(--accent) 45%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+@media (prefers-reduced-motion: reduce) { img.fade { transition: none; } }

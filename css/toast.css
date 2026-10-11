@@ -1,0 +1,6 @@
+/* ---------- toast ---------- */
+.toasts { position: fixed; z-index: 60; left: 50%; top: max(76px, calc(env(safe-area-inset-top) + 66px)); transform: translateX(-50%); display: grid; gap: 8px; justify-items: center; pointer-events: none; }
+.toast { padding: 11px 18px; --r: 999px; font-size: 14px; font-weight: 500; animation: toastIn .5s var(--spring); max-width: calc(100vw - 32px); text-align: center; }
+.toast.out { animation: toastOut .4s var(--ease) forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-14px) scale(.9); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-10px) scale(.95); } }

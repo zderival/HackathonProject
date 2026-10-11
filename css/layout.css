@@ -1,0 +1,10 @@
+/* ---------- views ---------- */
+.view {
+  position: fixed; inset: 0; z-index: 2;
+  opacity: 0; visibility: hidden; transform: scale(1.03);
+  transition: opacity .55s var(--ease), transform .7s var(--ease), visibility 0s .55s;
+}
+.view.on { opacity: 1; visibility: visible; transform: none; transition: opacity .55s var(--ease), transform .7s var(--ease); }
+.view.behind { transform: scale(.94); }
+.scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }

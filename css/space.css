@@ -1,0 +1,17 @@
+/* ---------- 1 + 2: the space ---------- */
+#hero { position: fixed; inset: -8%; z-index: 0; pointer-events: none; }
+#hero div {
+  position: absolute; inset: 0; background: center/cover no-repeat;
+  filter: blur(60px) saturate(1.5) brightness(.55); transform: scale(1.12);
+  opacity: 0; transition: opacity 1.4s var(--ease);
+}
+#hero div.on { opacity: 1; }
+#hero::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(70% 55% at 50% 42%, transparent, rgba(8, 7, 14, .55) 70%, rgba(8, 7, 14, .92)),
+    radial-gradient(60% 50% at 20% 0%, hsla(var(--hue), 70%, 55%, .22), transparent 70%),
+    radial-gradient(50% 45% at 90% 100%, hsla(calc(var(--hue) + 40), 70%, 50%, .18), transparent 70%);
+  transition: background 1.2s;
+}
+#flow { position: fixed; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; mix-blend-mode: screen; }

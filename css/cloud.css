@@ -1,0 +1,43 @@
+/* CLOUD: account, worlds, QR card and assistant extras. Same glass language as the studio. */
+.mini { font: 500 12px var(--body); color: var(--muted); margin-top: 4px; }
+.seg2 { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.28); box-shadow: inset 0 1px 2px rgba(0,0,0,.35); }
+.seg2 button { flex: 1 1 0; border: 0; background: none; color: var(--muted); font: 600 12px var(--body); padding: 9px 6px; border-radius: 10px; transition: background .25s, color .25s, box-shadow .25s; line-height: 1.15; }
+.seg2 button:hover { color: var(--ink); }
+.seg2 button[aria-checked="true"] { background: color-mix(in oklab, var(--accent) 24%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent); }
+.pcount { justify-self: center; font: 500 12px var(--mono); color: var(--muted); text-align: center; }
+.pcount.off { color: #ffb3bb; }
+.qrwrap { transition: transform .4s var(--spring, ease); }
+.qrwrap:hover { transform: scale(1.02); }
+
+.cstat { gap: 6px; }
+.cchip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; font: 500 12px var(--body); color: var(--ink); background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.cchip i { width: 8px; height: 8px; border-radius: 50%; background: #8a8397; flex: none; }
+.cchip.on i { background: #66e0a0; box-shadow: 0 0 10px #66e0a0; }
+.cchip.off i { background: #ff6b7a; box-shadow: 0 0 10px #ff6b7a; }
+.cchip.wait i { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: mwblink 1s infinite; }
+.cuser { display: flex; align-items: center; gap: 12px; }
+.cuser > div { flex: 1; min-width: 0; display: grid; }
+.cuser b, .wrow b, .wcur b { font: 700 14.5px var(--display); letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avatar.sm { --s: 36px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 800 15px var(--display); color: #1a1420; background: linear-gradient(135deg, #ffd29a, #f0a25c); flex: none; }
+.wcur { padding: 12px 14px; border-radius: 16px; display: grid; gap: 2px; }
+.wlist { display: grid; gap: 8px; }
+.wrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 16px; --glass-a: .06; }
+.wrow > div:first-child { min-width: 0; display: grid; gap: 1px; }
+.wrow.cur { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 55%, transparent); }
+.irow.tight { flex-wrap: nowrap; gap: 6px; }
+.irow.tight .btn { flex: none; }
+.authf { display: grid; gap: 8px; }
+.cs.col { display: grid; gap: 6px; }
+.cs.col .cl { font: 500 12px var(--body); color: var(--muted); }
+.btn[disabled] { opacity: .55; pointer-events: none; }
+
+.ai-btns { display: grid; gap: 6px; }
+.ai-btns .btn { white-space: nowrap; }
+.mic[aria-pressed="true"] { background: rgba(255,107,122,.28); box-shadow: inset 0 0 0 1px rgba(255,107,122,.6); animation: mwblink 1s infinite; }
+.ai-q { margin-top: 6px; font-weight: 600; color: color-mix(in oklab, var(--accent) 85%, white); }
+.ai-heard { margin-bottom: 6px; font-size: 12px; color: var(--muted); font-style: italic; }
+.ai-act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* the phone's landing card when the link or code can't be used */
+.w-join.ended .w-join-btns { display: none; }
+.w-join.ended b { color: #ffd9a0; }

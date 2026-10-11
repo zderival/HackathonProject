@@ -1,0 +1,18 @@
+/* settings */
+.set-group { padding: 8px; --r: 24px; }
+.set-group h3 { margin: 14px 16px 6px; font: 400 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.set { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 18px; }
+.set + .set { border-top: 1px solid rgba(255,255,255,.06); }
+.set .lab { flex: 1 1 200px; min-width: 0; }
+.set .lab b { display: block; font-weight: 600; font-size: 15px; }
+.set .lab small { color: var(--muted); font-size: 12.5px; }
+.set output { font: 400 12px var(--mono); color: var(--muted); min-width: 44px; text-align: right; }
+.swatches { display: flex; gap: 8px; }
+.swatches button { width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--c); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 0 0 0 transparent; transition: box-shadow .3s, transform .3s var(--spring); }
+.swatches button[aria-pressed="true"] { box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 0 0 3px var(--ground), 0 0 0 5px var(--c); transform: scale(1.06); }
+.set .field { max-width: 300px; padding: 9px 12px; border-radius: 12px; }
+.note { font-size: 12.5px; color: var(--muted); padding: 4px 16px 14px; }
+@media (max-width: 640px) {
+  .set { flex-wrap: wrap; }
+  .set .field { max-width: none; }
+}

@@ -1,0 +1,18 @@
+/* ---------- edit sheet ---------- */
+dialog.sheet { border: 0; padding: 0; background: none; color: var(--ink); max-width: min(560px, calc(100vw - 24px)); width: 100%; max-height: calc(100dvh - 40px); overflow: visible; }
+dialog.sheet::backdrop { background: rgba(5,4,9,.45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+dialog.sheet[open] .sheet-body { animation: sheetIn .55s var(--spring); }
+@keyframes sheetIn { from { opacity: 0; transform: translateY(30px) scale(.96); } }
+.sheet-body { padding: 22px; --r: 30px; max-height: calc(100dvh - 40px); overflow-y: auto; scrollbar-width: none;
+  background: linear-gradient(160deg, rgba(48,42,62,.72), rgba(24,20,32,.78)); }
+.sheet-body h2 { margin: 0 0 4px; font: 800 26px var(--display); letter-spacing: -.02em; }
+.sheet-body form { display: grid; gap: 14px; margin-top: 16px; }
+.sheet-body label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.sheet-body .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sheet-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+.av-edit { display: flex; align-items: center; gap: 16px; }
+.av-edit .avatar { --s: 72px; }
+.av-edit .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .sheet-body .row2 { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,18 @@
+/* comments */
+.compose { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+.compose .avatar { --s: 40px; }
+.compose form { display: grid; gap: 10px; }
+.compose .bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.compose .bar .field { max-width: 220px; padding: 8px 12px; border-radius: 999px; }
+.comment { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 14px 4px; border-top: 1px solid rgba(255,255,255,.07); animation: rise .5s var(--ease); }
+.comment .avatar { --s: 36px; }
+.comment .hd { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.comment .hd b { font: 600 14px var(--display); }
+.comment .hd small { color: var(--faint); font: 400 11px var(--mono); }
+.comment p { margin: 3px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment .acts { display: flex; gap: 14px; }
+.comment .acts button { border: 0; background: none; padding: 0; color: var(--muted); font-size: 12.5px; display: inline-flex; gap: 5px; align-items: center; }
+.comment .acts button.on { color: #ff7a93; }
+@media (max-width: 640px) {
+  .compose .bar .field { max-width: 150px; }
+}
