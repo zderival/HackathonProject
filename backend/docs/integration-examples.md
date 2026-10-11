@@ -25,7 +25,7 @@ async function api<T = any>(method: string, path: string, body?: unknown): Promi
 
 // 1. Login
 const login = await fetch(`${API}/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email, password }) }).then((r) => r.json());
+  body: JSON.stringify({ username, password }) }).then((r) => r.json());   // no email anywhere
 tokens = login.tokens;
 async function refresh() {
   const r = await fetch(`${API}/v1/auth/refresh`, { method: 'POST', headers: { 'content-type': 'application/json' },
@@ -135,81 +135,107 @@ function applyChange(scene: any, c: any) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 ```
 
-## iPhone viewer (Swift-flavoured pseudocode; renderer-neutral)
+## Phone viewer in the mobile browser (TypeScript + three.js)
 
-```swift
-// 1. Scan QR / open Universal Link
-func handle(url: URL) async throws {
-    let r = try await get("/v1/links/resolve?url=\(url.absoluteString.urlEncoded)", token: savedToken)
-    switch r.next {
-    case "open":
-        var headers: [String: String] = [:]
-        if let link = r.linkToken { headers["X-Gallery-Link"] = link }
-        let vs = try await post("/v1/galleries/\(r.galleryId!)/viewer-sessions", body: [:], token: savedToken, headers: headers)
-        try await startViewing(galleryId: r.galleryId!, viewerToken: vs.viewerToken)
-    case "claim_pairing":
-        let code = url.lastPathComponent                        // /p/{code}
-        let s = try await post("/v1/pairings/claim", body: ["code": code])
-        try await startViewing(galleryId: s.galleryId, viewerToken: s.viewerToken)
-    case "sign_in":
-        presentLogin { token in savedToken = token; Task { try await handle(url: url) } }
-    default:
-        openInBrowser(url)                                      // join_as_editor / accept_invitation are website flows
-    }
+The QR code opens `{VIEWER_BASE_URL}/view/{galleryId}?link=...` (or `/p/{code}` for a
+website preview) in the phone's normal browser. This page is read-only: it never needs an
+editor account. Requires HTTPS.
+
+```ts
+import * as THREE from 'three';
+import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect.js';
+
+const API = 'https://api.example.com';
+let viewerToken = sessionStorage.getItem('vs') ?? '';
+let scene: any; let revision = -1;
+
+// 1. Resolve the URL the phone opened
+async function start() {
+  const r = await get(`/v1/links/resolve?url=${encodeURIComponent(location.href)}`, userToken());
+  if (r.next === 'claim_pairing') {
+    const code = location.pathname.split('/').pop()!;
+    const s = await post('/v1/pairings/claim', { code });             // single use
+    viewerToken = s.viewerToken; await view(s.galleryId);
+  } else if (r.next === 'open') {
+    const headers: Record<string, string> = r.linkToken ? { 'x-gallery-link': r.linkToken } : {};
+    const vs = await post(`/v1/galleries/${r.galleryId}/viewer-sessions`, {}, userToken(), headers);
+    viewerToken = vs.viewerToken; await view(r.galleryId);
+  } else if (r.next === 'sign_in') {
+    showLoginForm();                                                     // username + password, then start() again
+  } else {
+    location.href = r.galleryId ? `/g/${r.galleryId}` : '/';             // editor flows belong on the website
+  }
+  sessionStorage.setItem('vs', viewerToken);
 }
 
-// 2. Load scene + assets, 3. subscribe, 4. apply ordered updates
-func startViewing(galleryId: String, viewerToken: String) async throws {
-    let snap = try await get("/v1/galleries/\(galleryId)/scene", token: viewerToken)
-    scene = snap.scene; revision = snap.revision
-    try await loadAssets(for: scene, token: viewerToken)
-    try await connect(galleryId: galleryId, token: viewerToken)
+// 2. Load scene + textures, 3. subscribe
+async function view(galleryId: string) {
+  ({ scene, revision } = await get(`/v1/galleries/${galleryId}/scene`, viewerToken));
+  await loadTextures();                                                  // POST /v1/assets/manifests, use "medium" webp on phones
+  buildThreeScene(scene);
+  connect(galleryId);
 }
 
-func loadAssets(for scene: Scene, token: String) async throws {
-    let ids = scene.nodes.values.compactMap { $0.props.assetId ?? $0.props.material?.textureAssetId }
-    guard !ids.isEmpty else { return }
-    let m = try await post("/v1/assets/manifests", body: ["assetIds": Array(Set(ids))], token: token)
-    for a in m.items {
-        // Prefer "large" (or "medium" on older phones) in jpeg/png if the engine lacks WebP.
-        let v = a.variants.first { $0.name == "large" && $0.format != "webp" } ?? a.variants.first { $0.name == "medium" && $0.format != "webp" }!
-        cache[a.id] = try await download(v.url)                 // signed URL, no auth header; refresh manifest after urlsExpireAt
-    }
+function connect(galleryId: string, backoff = 500) {
+  post(`/v1/galleries/${galleryId}/realtime-tickets`, { capability: 'view' }, viewerToken).then((t) => {
+    const ws = new WebSocket(t.url);
+    ws.onmessage = (ev) => {
+      const m = JSON.parse(ev.data);
+      if (m.type === 'snapshot') { scene = m.scene; revision = m.revision; buildThreeScene(scene); }
+      else if (m.type === 'ops') {
+        if (m.revision <= revision) return;                                       // duplicate
+        if (m.revision !== revision + 1) return ws.send(JSON.stringify({ type: 'resync', fromRevision: revision }));
+        for (const c of m.changes) applyChange(scene, c);                         // same helper as the editor
+        revision = m.revision; updateThreeScene(m.changes);                       // anchor changes: ease over ~400 ms
+      }
+    };
+    ws.onclose = (e) => {
+      if (e.code === 4403) return showMessage('This gallery is no longer shared with you.');
+      setTimeout(() => connect(galleryId, Math.min(backoff * 2, 15000)), backoff + Math.random() * 250);
+    };
+  });
 }
 
-func connect(galleryId: String, token: String) async throws {
-    let t = try await post("/v1/galleries/\(galleryId)/realtime-tickets", body: ["capability": "view"], token: token)
-    socket = WebSocket(url: t.url)
-    socket.onMessage { msg in
-        switch msg.type {
-        case "snapshot": scene = msg.scene; revision = msg.revision; rebuildAll()
-        case "ops":
-            if msg.revision <= revision { return }                         // duplicate
-            if msg.revision != revision + 1 { socket.send(["type": "resync", "fromRevision": revision]); return }
-            for c in msg.changes { apply(c) }                              // may reference new assetIds -> loadAssets
-            revision = msg.revision
-            if msg.changes.contains(where: { $0.path == "viewerAnchor" }) { beginAnchorTransition(to: scene.viewerAnchor) }
-        default: break
-        }
-    }
-    socket.onClose { code in
-        if code == 4403 { showAccessEnded(); return }                     // revoked: resolve the link again
-        reconnectWithBackoff { try await connect(galleryId: galleryId, token: token) }  // new ticket each time
-    }
-}
+// 4. "Enter VR" button: permissions, fullscreen, stereo, head tracking
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+const camera = new THREE.PerspectiveCamera(80, innerWidth / innerHeight, 0.05, 200);
+const stereo = new StereoEffect(renderer);
+let head = new THREE.Quaternion();                                        // LOCAL head orientation only
 
-// 5. Combine the shared anchor with LOCAL head tracking (never sent to the server)
-func cameraPose(head: simd_quatf) -> (position: SIMD3<Float>, rotation: simd_quatf) {
-    let a = currentAnchorPose()                                            // eased toward scene.viewerAnchor
-    return (a.position, simd_normalize(a.rotation * head))                 // world = anchor * head
+enterVrButton.onclick = async () => {
+  // Android Chrome: prefer real WebXR when available.
+  if (await (navigator as any).xr?.isSessionSupported?.('immersive-vr')) return startWebXR();
+  // iPhone Safari: motion sensors need permission from a user gesture.
+  const DOE = DeviceOrientationEvent as any;
+  if (typeof DOE.requestPermission === 'function' && (await DOE.requestPermission()) !== 'granted')
+    return showMessage('Motion access is needed to look around.');
+  // Android: real fullscreen. iPhone Safari ignores this; there, fullscreen comes from
+  // launching the viewer from the Home Screen (see the iPhone checklist in api-guide.md).
+  await document.documentElement.requestFullscreen?.().catch(() => {});
+  await (navigator as any).wakeLock?.request('screen').catch(() => {});
+  watchOrientation();                                                     // "Turn your phone sideways" overlay while portrait
+  addEventListener('deviceorientation', (e) => { head = deviceOrientationToQuaternion(e.alpha!, e.beta!, e.gamma!, screen.orientation?.angle ?? 0); });
+  renderer.setAnimationLoop(render);
+};
+
+// 5. Shared anchor x local head (head movement is never sent to the server)
+function render() {
+  const a = currentAnchor();                                              // eased toward scene.viewerAnchor
+  camera.position.set(a.position[0], a.position[1], a.position[2]);
+  camera.quaternion.set(a.rotation[0], a.rotation[1], a.rotation[2], a.rotation[3]).multiply(head);
+  stereo.setSize(innerWidth, innerHeight);
+  stereo.render(threeScene, camera);                                      // side-by-side for a phone headset
 }
-// Per eye: offset the camera along the rotated +X/-X by half the IPD; lens distortion per Cardboard SDK.
+// deviceOrientationToQuaternion: the standard conversion used by three.js DeviceOrientationControls
+// (ZXY Euler from alpha/beta/gamma, then rotate -90 deg about X and by the screen orientation).
 ```
 
-### Unity notes
-
-Convert every local transform once when building the hierarchy (see docs/scene-model.md):
-`position (x, y, -z)`, `rotation (-x, -y, z, w)`, scale unchanged; build front faces toward
-Unity's local -Z (or rotate meshes 180 deg about Y). `Texture2D.LoadImage` does not decode
-WebP: use the JPEG/PNG variants. Compose the camera as `anchorRotation * headRotation`
-in Unity space.
+Notes:
+- The scene uses the same conventions as three.js (right-handed, +Y up, -Z forward), so
+  transforms copy directly; colors are sRGB.
+- `watchOrientation()`: show an overlay while `innerHeight > innerWidth`; iPhone cannot lock
+  landscape from a web page.
+- Let users "recenter": store the current head yaw as an offset and remove it from `head`.
+- A phone headset's lenses need barrel-distortion correction for comfort; `StereoEffect` does
+  not do it. Acceptable for a demo; add a distortion pass if time allows.
+- Keep textures modest on phones (`medium` variants, 1024 px) to stay within GPU memory.

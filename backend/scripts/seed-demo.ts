@@ -1,4 +1,4 @@
-// Explicit development/demo seed: `npm run seed:demo`.
+// Explicit development/demo seed: `npm run seed:demo`. Accounts: demo-owner, demo-editor, demo-editor2, demo-viewer.
 //
 // Creates owner/editor/viewer accounts and a furnished demo gallery whose artwork is
 // generated here (original procedural images, no third-party content). Everything goes
@@ -20,7 +20,7 @@ import { hashPassword, randomToken } from '../src/lib/crypto.js';
 import { SCENE_SCHEMA_VERSION } from '../src/schemas/scene.js';
 import { starterScene, yawQuat } from '../src/scene/defaults.js';
 import { qMul, qNormalize, type Q } from '../src/scene/math.js';
-import { galleryLink, editJoinLink } from '../src/sharing/links.js';
+import { editJoinLink, editorLink, viewerLink } from '../src/sharing/links.js';
 
 const config = loadConfig();
 if (config.nodeEnv === 'production' && !process.argv.includes('--allow-production')) {
@@ -28,7 +28,6 @@ if (config.nodeEnv === 'production' && !process.argv.includes('--allow-productio
   process.exit(1);
 }
 
-const domain = process.env.DEMO_EMAIL_DOMAIN ?? 'demo.gallery.test';
 const password = process.env.DEMO_PASSWORD || `demo-${randomBytes(9).toString('base64url')}`;
 if (password.length < 8) throw new Error('DEMO_PASSWORD must be at least 8 characters');
 
@@ -78,16 +77,16 @@ async function main() {
   // No live connections during seeding; nothing to broadcast.
   const actions = new ActionService(db, config, { publish: () => {} });
 
-  const users: Record<string, { id: string; email: string }> = {};
+  const users: Record<string, { id: string; username: string }> = {};
   const hash = await hashPassword(password);
   for (const a of ACCOUNTS) {
-    const email = `${a.key}@${domain}`;
+    const username = `demo-${a.key}`;
     const { rows } = await db.query(
-      `INSERT INTO users (email, password_hash, display_name, preferred_language) VALUES ($1, $2, $3, $4)
-       ON CONFLICT (lower(email)) DO UPDATE SET password_hash = EXCLUDED.password_hash RETURNING id`,
-      [email, hash, a.name, a.lang],
+      `INSERT INTO users (username, password_hash, display_name, preferred_language) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (lower(username)) DO UPDATE SET password_hash = EXCLUDED.password_hash RETURNING id`,
+      [username, hash, a.name, a.lang],
     );
-    users[a.key] = { id: rows[0].id, email };
+    users[a.key] = { id: rows[0].id, username };
   }
   // Seeding resets passwords: end old sessions so only the printed password works.
   await db.query(`UPDATE auth_sessions SET revoked_at = now() WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`, [Object.values(users).map((u) => u.id)]);
@@ -154,8 +153,9 @@ async function main() {
   console.log('\n=== Demo seed complete ===');
   console.log(`Gallery:   ${title} (${galleryId}), revision ${links[0].revision}`);
   console.log(`Password for all demo accounts (shown once): ${password}`);
-  for (const a of ACCOUNTS) console.log(`  ${a.key.padEnd(8)} ${users[a.key].email}  [${a.lang}]`);
-  console.log(`View link (QR): ${galleryLink(config, galleryId, links[0].view_link_token)}`);
+  for (const a of ACCOUNTS) console.log(`  ${a.key.padEnd(8)} username: ${users[a.key].username}  [${a.lang}]`);
+  console.log(`Phone viewer link (QR, opens in the mobile browser): ${viewerLink(config, galleryId, links[0].view_link_token)}`);
+  console.log(`Editor (website): ${editorLink(config, galleryId)}`);
   console.log(`Edit join link (enable with sharing mode edit_link): ${editJoinLink(config, galleryId, links[0].edit_link_token)}`);
   await db.end();
 }

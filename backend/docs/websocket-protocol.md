@@ -15,7 +15,7 @@ The backend never streams rendered video; clients render their own copy.
    X-Gallery-Link: <share token, only when access comes from a view link>
 
    { "capability": "edit" }        // website editor
-   { "capability": "view" }        // iPhone viewer, website preview, read-only users
+   { "capability": "view" }        // phone viewer (mobile browser), website preview, read-only users
    ```
 
    Response: `{ "ticket", "url": "wss://api.example.com/v1/ws?ticket=...", "capability", "expiresAt" }`.

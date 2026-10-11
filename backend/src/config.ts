@@ -24,6 +24,7 @@ function bool(name: string, fallback: boolean): boolean {
 
 export function loadConfig() {
   const nodeEnv = str('NODE_ENV', 'development');
+  const publicWebUrl = str('PUBLIC_WEB_URL', 'http://localhost:5173');
   return {
     nodeEnv,
     port: int('PORT', 8080),
@@ -33,9 +34,10 @@ export function loadConfig() {
     databaseSsl: bool('DATABASE_SSL', false),
 
     publicApiUrl: str('PUBLIC_API_URL', 'http://localhost:8080'),
-    publicWebUrl: str('PUBLIC_WEB_URL', 'http://localhost:5173'),
-    // Universal-link base handled by the iOS app (falls back to the web landing page).
-    deepLinkBaseUrl: str('DEEP_LINK_BASE_URL', 'http://localhost:5173'),
+    publicWebUrl,
+    // Base URL of the mobile-browser VR viewer that QR codes open (usually the website).
+    // DEEP_LINK_BASE_URL is the older name and is still accepted.
+    viewerBaseUrl: str('VIEWER_BASE_URL', process.env.DEEP_LINK_BASE_URL || publicWebUrl),
     corsOrigins: str('CORS_ORIGINS', 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean),
     trustProxy: bool('TRUST_PROXY', false),
 

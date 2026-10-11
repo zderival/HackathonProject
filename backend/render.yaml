@@ -23,7 +23,7 @@ services:
         sync: false
       - key: PUBLIC_WEB_URL
         sync: false
-      - key: DEEP_LINK_BASE_URL
+      - key: VIEWER_BASE_URL
         sync: false
       - key: CORS_ORIGINS
         sync: false

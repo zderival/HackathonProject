@@ -6,7 +6,7 @@ import type { Lang } from '../lib/i18n.js';
 
 export interface UserRow {
   id: string;
-  email: string;
+  username: string;
   display_name: string;
   preferred_language: Lang;
   created_at: Date;
@@ -15,7 +15,7 @@ export interface UserRow {
 export function publicUser(u: UserRow) {
   return {
     id: u.id,
-    email: u.email,
+    username: u.username,
     displayName: u.display_name,
     preferredLanguage: u.preferred_language,
     createdAt: u.created_at.toISOString(),
@@ -36,31 +36,32 @@ export class AuthService {
     private config: Config,
   ) {}
 
-  async register(input: { email: string; password: string; displayName: string; preferredLanguage?: Lang }, userAgent?: string) {
-    const email = input.email.trim().toLowerCase();
+// Usernames keep the case the user typed for display but are unique and matched
+  // case-insensitively.
+  async register(input: { username: string; password: string; displayName?: string; preferredLanguage?: Lang }, userAgent?: string) {
+    const username = input.username.trim();
     const hash = await hashPassword(input.password);
     try {
       const { rows } = await this.db.query<UserRow>(
-        `INSERT INTO users (email, password_hash, display_name, preferred_language)
-         VALUES ($1, $2, $3, $4) RETURNING id, email, display_name, preferred_language, created_at`,
-        [email, hash, input.displayName.trim(), input.preferredLanguage ?? 'en'],
+        `INSERT INTO users (username, password_hash, display_name, preferred_language)
+         VALUES ($1, $2, $3, $4) RETURNING id, username, display_name, preferred_language, created_at`,
+        [username, hash, input.displayName?.trim() || username, input.preferredLanguage ?? 'en'],
       );
       const tokens = await this.createSession(rows[0].id, userAgent);
       return { user: publicUser(rows[0]), tokens };
     } catch (err: any) {
-      if (err.code === '23505') throw new AppError('EMAIL_TAKEN');
+      if (err.code === '23505') throw new AppError('USERNAME_TAKEN');
       throw err;
     }
   }
 
-  async login(emailRaw: string, password: string, userAgent?: string) {
-    const email = emailRaw.trim().toLowerCase();
+  async login(usernameRaw: string, password: string, userAgent?: string) {
     const { rows } = await this.db.query<UserRow & { password_hash: string }>(
-      `SELECT id, email, display_name, preferred_language, created_at, password_hash FROM users WHERE lower(email) = $1`,
-      [email],
+      `SELECT id, username, display_name, preferred_language, created_at, password_hash FROM users WHERE lower(username) = lower($1)`,
+      [usernameRaw.trim()],
     );
     const user = rows[0];
-    // Always run a hash comparison so response time does not reveal whether the email exists.
+    // Always run a hash comparison so response time does not reveal whether the username exists.
     const ok = await verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
     if (!user || !ok) throw new AppError('INVALID_CREDENTIALS');
     const tokens = await this.createSession(user.id, userAgent);
@@ -129,11 +130,27 @@ export class AuthService {
 
   async getUser(userId: string) {
     const { rows } = await this.db.query<UserRow>(
-      `SELECT id, email, display_name, preferred_language, created_at FROM users WHERE id = $1`,
+      `SELECT id, username, display_name, preferred_language, created_at FROM users WHERE id = $1`,
       [userId],
     );
     if (!rows[0]) throw new AppError('NOT_FOUND');
     return publicUser(rows[0]);
+  }
+
+  // Requires the current password; other sessions are signed out, the current one stays.
+  async changePassword(userId: string, sessionId: string, currentPassword: string, newPassword: string) {
+    const { rows } = await this.db.query(`SELECT password_hash FROM users WHERE id = $1`, [userId]);
+    if (!rows[0] || !(await verifyPassword(currentPassword, rows[0].password_hash))) throw new AppError('INVALID_CREDENTIALS');
+    await this.db.query(`UPDATE users SET password_hash = $2 WHERE id = $1`, [userId, await hashPassword(newPassword)]);
+    await this.db.query(`UPDATE auth_sessions SET revoked_at = now() WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL`, [userId, sessionId]);
+  }
+
+  async findByUsername(username: string) {
+    const { rows } = await this.db.query<UserRow>(
+      `SELECT id, username, display_name, preferred_language, created_at FROM users WHERE lower(username) = lower($1)`,
+      [username.trim()],
+    );
+    return rows[0] ?? null;
   }
 
   async updateProfile(userId: string, patch: { displayName?: string; preferredLanguage?: Lang }) {

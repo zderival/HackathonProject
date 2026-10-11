@@ -88,7 +88,7 @@ language. Haitian Creole is named to the model explicitly as a distinct language
 | | Status |
 |---|---|
 | Localized error/system messages | Implemented for all five; machine-written, needs native-speaker review. |
-| Text understanding, audio understanding, speech output | **Not claimed until verified** with your key: `npm run smoke:gemini`. Results appear per language in `GET /v1/capabilities` (`assistant.languages`). The Gemini 3.8 Flash TTS documentation (checked 2026-10-10) lists all five languages for speech output. |
+| Text understanding, audio understanding, speech output | **Passed the automated live smoke test for all five languages on 2026-10-10** (`gemini-3.8-flash`, `gemini-3.8-flash-tts`; details in docs/implementation-report.md). Voice input was tested with synthesized speech only, and audio quality has not been judged by a listener. Results appear per language in `GET /v1/capabilities` (`assistant.languages`) on any server that has the report file; rerun `npm run smoke:gemini` after changing models. |
 
 `npm run smoke:gemini` sends the five example commands from the brief through the real
 model, applies the plans to a real scene offline, checks that each does what was asked,

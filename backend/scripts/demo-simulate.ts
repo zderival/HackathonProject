@@ -94,9 +94,9 @@ async function connect(name: string, a: Api, galleryId: string, capability: 'edi
 }
 
 async function user(name: string) {
-  const email = `${name.toLowerCase()}-${randomUUID().slice(0, 8)}@demo-sim.test`;
-  const r = await api().post('/v1/auth/register', { email, password: 'demo-sim-password', displayName: name });
-  return { id: r.user.id as string, email, api: api(r.tokens.accessToken) };
+  const username = `sim-${name.toLowerCase()}-${randomUUID().slice(0, 8)}`;
+  const r = await api().post('/v1/auth/register', { username, password: 'demo-sim-password', displayName: name });
+  return { id: r.user.id as string, username, api: api(r.tokens.accessToken) };
 }
 
 const step = (n: number, msg: string) => console.log(`\n[${n}] ${msg}`);
@@ -113,7 +113,7 @@ async function main() {
   const owner = await user('Owner');
   const editor = await user('Editor');
   const g = await owner.api.post('/v1/galleries', { title: 'Simulated demo' });
-  await owner.api.put(`/v1/galleries/${g.id}/members/${editor.id}`, { role: 'editor' });
+  await owner.api.post(`/v1/galleries/${g.id}/members`, { username: editor.username, role: 'editor' });
   ok(`gallery ${g.id}`);
 
   step(2, 'Website opens a preview; two phones scan the pairing QR and subscribe read-only');

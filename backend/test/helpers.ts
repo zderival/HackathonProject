@@ -91,10 +91,10 @@ export function client(base: string, token?: string, extraHeaders: Record<string
 export type Client = ReturnType<typeof client>;
 
 export async function registerUser(base: string, name = 'User') {
-  const email = `${name.toLowerCase().replace(/\W/g, '')}-${randomUUID().slice(0, 8)}@example.test`;
-  const r = await client(base).post('/v1/auth/register', { email, password: 'correct-horse-1', displayName: name });
+  const username = `${name.toLowerCase().replace(/\W/g, '').slice(0, 16)}-${randomUUID().slice(0, 8)}`;
+  const r = await client(base).post('/v1/auth/register', { username, password: 'correct-horse-1', displayName: name });
   if (r.status !== 201) throw new Error(`register failed: ${r.status} ${JSON.stringify(r.body)}`);
-  return { ...r.body.user, email, api: client(base, r.body.tokens.accessToken), tokens: r.body.tokens };
+  return { ...r.body.user, username, api: client(base, r.body.tokens.accessToken), tokens: r.body.tokens };
 }
 
 export async function createGallery(api: Client, title = 'Test gallery') {

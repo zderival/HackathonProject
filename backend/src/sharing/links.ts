@@ -1,9 +1,11 @@
-// Canonical links handed to the website, the iOS app and QR codes.
+// Canonical links handed to the website and encoded in QR codes. Phones open them in
+// their normal mobile browser; no app is involved.
 //
-//   Gallery (deep link / Universal Link): {DEEP_LINK_BASE_URL}/g/{galleryId}[?link={viewToken}]
-//   Edit invitation link (website):       {PUBLIC_WEB_URL}/g/{galleryId}/join?link={editToken}
-//   Phone pairing (preview session):      {DEEP_LINK_BASE_URL}/p/{pairingCode}
-//   Email invitation (website):           {PUBLIC_WEB_URL}/invite/{invitationToken}
+//   Mobile VR viewer:              {VIEWER_BASE_URL}/view/{galleryId}[?link={viewToken}]
+//   Website editor:                {PUBLIC_WEB_URL}/g/{galleryId}
+//   Edit invitation link (website): {PUBLIC_WEB_URL}/g/{galleryId}/join?link={editToken}
+//   Phone pairing (preview):       {VIEWER_BASE_URL}/p/{pairingCode}
+//   Invitation (website):          {PUBLIC_WEB_URL}/invite/{invitationToken}
 //
 // A link only identifies a gallery (plus an optional share token). Access is always
 // decided by the server when the link is resolved, so rotated tokens and restricted
@@ -13,9 +15,13 @@ import type { Config } from '../config.js';
 
 const trim = (u: string) => u.replace(/\/+$/, '');
 
-export function galleryLink(config: Config, galleryId: string, viewToken?: string | null) {
-  const base = `${trim(config.deepLinkBaseUrl)}/g/${galleryId}`;
+export function viewerLink(config: Config, galleryId: string, viewToken?: string | null) {
+  const base = `${trim(config.viewerBaseUrl)}/view/${galleryId}`;
   return viewToken ? `${base}?link=${encodeURIComponent(viewToken)}` : base;
+}
+
+export function editorLink(config: Config, galleryId: string) {
+  return `${trim(config.publicWebUrl)}/g/${galleryId}`;
 }
 
 export function editJoinLink(config: Config, galleryId: string, editToken: string) {
@@ -23,7 +29,7 @@ export function editJoinLink(config: Config, galleryId: string, editToken: strin
 }
 
 export function pairingLink(config: Config, code: string) {
-  return `${trim(config.deepLinkBaseUrl)}/p/${encodeURIComponent(code)}`;
+  return `${trim(config.viewerBaseUrl)}/p/${encodeURIComponent(code)}`;
 }
 
 export function invitationLink(config: Config, token: string) {
@@ -37,8 +43,9 @@ export type ParsedLink =
 
 const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
 
-// Parses any of the link shapes above. The host is not trusted or required to match:
-// only the path and query are used, and the result is authorized separately.
+// Parses any of the link shapes above (and older /g/{id} viewer links). The host is not
+// trusted or required to match: only the path and query are used, and the result is
+// authorized separately.
 export function parseLink(raw: string): ParsedLink | null {
   let url: URL;
   try {
@@ -47,7 +54,7 @@ export function parseLink(raw: string): ParsedLink | null {
     return null;
   }
   const path = url.pathname.replace(/\/+$/, '');
-  let m = new RegExp(`/g/(${UUID})(/join)?$`).exec(path);
+  let m = new RegExp(`/(?:view|g)/(${UUID})(/join)?$`).exec(path);
   if (m) return { kind: 'gallery', galleryId: m[1].toLowerCase(), linkToken: url.searchParams.get('link') || null };
   m = /\/p\/([A-Za-z0-9_-]{6,64})$/.exec(path);
   if (m) return { kind: 'pairing', code: m[1] };

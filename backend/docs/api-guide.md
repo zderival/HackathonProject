@@ -5,11 +5,25 @@ under `/v1`. This guide covers the cross-cutting rules the reference cannot expr
 
 ## Authentication
 
+Accounts are **username + password** only (no email):
+
+| Endpoint | Body |
+|---|---|
+| `POST /v1/auth/register` | `{ username, password, displayName?, preferredLanguage? }` |
+| `POST /v1/auth/login` | `{ username, password }` (username is case-insensitive) |
+| `POST /v1/auth/password` | `{ currentPassword, newPassword }` (signed in; signs out your other sessions) |
+
+Usernames: 3-30 characters from letters, digits, `_`, `.`, `-`; unique regardless of case;
+shown with the case chosen at sign-up. Passwords: at least 8 characters. Because there is no
+email, **a forgotten password cannot be recovered**; tell users this on the sign-up screen.
+Wrong username and wrong password return the same `401 INVALID_CREDENTIALS`. Login attempts
+are rate-limited per IP and username.
+
 | Token | Obtained from | Used by | Can |
 |---|---|---|---|
 | `at_...` access token (15 min) | `POST /v1/auth/register`, `/login`, `/refresh` | website | everything the account's role allows |
 | `rt_...` refresh token (30 days, single use, rotates) | same | website | `POST /v1/auth/refresh` only |
-| `vs_...` viewer token (12 h) | `POST /v1/galleries/{id}/viewer-sessions`, `POST /v1/pairings/claim` | iPhone app, previews | read ONE gallery: scene, assets, events, `view` tickets |
+| `vs_...` viewer token (12 h) | `POST /v1/galleries/{id}/viewer-sessions`, `POST /v1/pairings/claim` | mobile-browser viewer, previews | read ONE gallery: scene, assets, events, `view` tickets |
 | `wst_...` WebSocket ticket (60 s, single use) | `POST /v1/galleries/{id}/realtime-tickets` | any client | open one WebSocket |
 
 Send tokens as `Authorization: Bearer <token>`. Tokens are opaque and stored hashed. Roles
@@ -36,7 +50,7 @@ to French. Branch on `code`, never on `message`.
 | `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `TICKET_INVALID` | 401 | Missing/expired token; wrong password; bad ticket. |
 | `FORBIDDEN` | 403 | You can see the gallery but lack the capability (e.g. viewer editing). |
 | `NOT_FOUND` | 404 | Does not exist **or you have no access** (galleries are not probeable). |
-| `REVISION_CONFLICT`, `UNDO_CONFLICT`, `NOTHING_TO_UNDO`, `NOTHING_TO_REDO`, `IDEMPOTENCY_MISMATCH`, `EMAIL_TAKEN`, `AI_CANCELLED` | 409 | See below. |
+| `REVISION_CONFLICT`, `UNDO_CONFLICT`, `NOTHING_TO_UNDO`, `NOTHING_TO_REDO`, `IDEMPOTENCY_MISMATCH`, `USERNAME_TAKEN`, `AI_CANCELLED` | 409 | See below. |
 | `LINK_DISABLED`, `INVITATION_INVALID` | 410 | Share link rotated/disabled; invitation used/expired/revoked. |
 | `PAYLOAD_TOO_LARGE` / `UNSUPPORTED_MEDIA_TYPE` | 413 / 415 | Upload limits and formats. |
 | `INVALID_SCENE`, `INVALID_REFERENCE`, `UNSUPPORTED_OPERATION`, `LIMIT_EXCEEDED`, `AI_INVALID_PLAN`, `DONATION_UNVERIFIED`, `INSUFFICIENT_FUNDS` | 422 | Edit would break the scene; limits; assistant plan rejected; donations. |
@@ -118,41 +132,48 @@ Effects of owner actions (all apply immediately, including on open WebSockets vi
 |---|---|---|
 | Change mode | `PUT /galleries/{id}/sharing {mode}` | `restricted`: view links stop working; link editors suspended. |
 | Rotate links | `POST /galleries/{id}/sharing/rotate {links: view|edit|both}` | Old tokens (and every QR printed from them) stop working; phones using them lose access; link editors suspended on edit rotation. |
-| Grant/change role | `PUT /galleries/{id}/members/{userId} {role}` | Membership becomes explicit. Downgrade removes write capability at once. |
+| Add member / change role | `POST /galleries/{id}/members {username, role}` or `PUT /galleries/{id}/members/{userId} {role}` | Membership becomes explicit. Downgrade removes write capability at once. |
 | Revoke | `DELETE /galleries/{id}/members/{userId}` | Access ends at once (members may also leave themselves). |
-| Invite | `POST /galleries/{id}/invitations {email, role}` | Returns a link `PUBLIC_WEB_URL/invite/{token}`; single use; expires (7 days); only the invited email can accept (`POST /invitations/accept`). No email is sent by the backend. |
+| Invite | `POST /galleries/{id}/invitations {username, role}` | Returns a link `PUBLIC_WEB_URL/invite/{token}` to share however you like; single use; expires (7 days); only the account with that username can accept (`POST /invitations/accept`), and it may sign up after the invite was sent. |
 | Editor limit | `LIMIT_EDITORS_PER_GALLERY` (5) | `LIMIT_EXCEEDED` when granting more editors. |
 
 `GET /v1/galleries/{id}/capabilities` returns your effective role, how it was granted and
 which actions to enable in the UI.
 
-## Links, QR codes and the iPhone flow
+## Links, QR codes and the phone (mobile browser) flow
 
-Canonical link shapes (HTTPS, handled by the iOS app as Universal Links, by the website
-otherwise):
+The phone viewer is a **web page** that opens in the phone's normal browser when a QR code
+is scanned; no app is installed. Canonical link shapes (`VIEWER_BASE_URL` is usually the
+website origin):
 
-| Link | Shape |
-|---|---|
-| Gallery (members) | `{DEEP_LINK_BASE_URL}/g/{galleryId}` |
-| Gallery via view link | `{DEEP_LINK_BASE_URL}/g/{galleryId}?link={viewToken}` |
-| Edit join link (website) | `{PUBLIC_WEB_URL}/g/{galleryId}/join?link={editToken}` |
-| Phone pairing (preview) | `{DEEP_LINK_BASE_URL}/p/{pairingCode}` |
-| Invitation (website) | `{PUBLIC_WEB_URL}/invite/{token}` |
+| Link | Shape | Opened by |
+|---|---|---|
+| Phone viewer (members) | `{VIEWER_BASE_URL}/view/{galleryId}` | mobile browser |
+| Phone viewer via view link | `{VIEWER_BASE_URL}/view/{galleryId}?link={viewToken}` | mobile browser |
+| Phone pairing (preview) | `{VIEWER_BASE_URL}/p/{pairingCode}` | mobile browser |
+| Editor | `{PUBLIC_WEB_URL}/g/{galleryId}` | desktop browser |
+| Edit join link | `{PUBLIC_WEB_URL}/g/{galleryId}/join?link={editToken}` | desktop browser |
+| Invitation | `{PUBLIC_WEB_URL}/invite/{token}` | any browser |
+
+`GET /galleries/{id}/sharing` returns `viewUrl` (put this in the QR code), `galleryUrl`
+(members-only viewer link), `editorUrl` and `editJoinUrl`. Older `/g/{id}?link=` viewer
+links still resolve.
 
 QR images: `GET /v1/galleries/{id}/qr?format=png|svg&target=gallery|edit` and
 `GET /v1/pairings/qr?code=...`; the encoded URL is in the `X-Link-Url` header. A QR code is
 an **entry link**, not an authorization grant: access is decided when it is resolved, so
 rotating links or restricting the gallery invalidates printed codes immediately.
 
-**Phone flow:** scan -> `GET /v1/links/resolve?url=<scanned URL>` (with the app's token if
-it has one) -> follow `next`:
+**Phone flow:** scan -> the browser opens the viewer page -> the page calls
+`GET /v1/links/resolve?url=<location.href>` (with the browser's token if it has one) ->
+follow `next`:
 
 | `next` | Do |
 |---|---|
 | `open` | `POST /v1/galleries/{id}/viewer-sessions` (send `X-Gallery-Link: <linkToken>` if returned) -> `vs_` token -> `GET /scene` -> view ticket -> WebSocket. |
-| `sign_in` | Authenticate (email/password), then resolve again. The response reveals nothing about restricted galleries. |
+| `sign_in` | Show the username/password login on the phone, then resolve again. The response reveals nothing about restricted galleries. |
 | `claim_pairing` | `POST /v1/pairings/claim {code}` -> `vs_` token (single use, 10 min). |
-| `join_as_editor` / `accept_invitation` | Website flows; the phone should open the website. |
+| `join_as_editor` / `accept_invitation` | Editor/website flows (best on a desktop browser). |
 
 Errors: `410 LINK_DISABLED` (rotated/disabled link), `404` (signed in but no access).
 
@@ -160,15 +181,41 @@ Errors: `410 LINK_DISABLED` (rotated/disabled link), `404` (signed in but no acc
 shows `qrSvgPath` as a QR code; the phone scans it, claims the code and gets its own
 read-only token. The token never appears on screen. Revoke with `DELETE /v1/viewer-sessions/{id}`.
 
-### iOS Universal Link / app-install handoff (client team)
+### Mobile-browser viewer requirements (website team)
 
-The backend only produces HTTPS links; it does not install apps. The website/iOS team must:
-1. Serve `https://<DEEP_LINK_BASE_URL host>/.well-known/apple-app-site-association` listing
-   the app ID with paths `/g/*` and `/p/*`, and add the Associated Domains entitlement
-   `applinks:<host>` to the app.
-2. Implement the same paths as a **web landing page** fallback: it shows the gallery name
-   (via `GET /v1/links/resolve`), an App Store / TestFlight link, and a web preview.
-3. In the app, pass the full incoming URL to `GET /v1/links/resolve`.
+1. Serve the routes `/view/:galleryId` and `/p/:code` from the website as a mobile VR viewer
+   page (see docs/integration-examples.md). Store the `vs_` viewer token in `sessionStorage`.
+2. **HTTPS is required**: phone browsers only expose motion sensors and fullscreen on secure
+   origins. Testing on a phone over the LAN needs the deployed site or an HTTPS tunnel.
+3. **iPhone (Safari)** has no WebXR VR mode: render side-by-side stereo yourself (e.g.
+   three.js `StereoEffect`) and read head orientation from `deviceorientation` after calling
+   `DeviceOrientationEvent.requestPermission()` from a button tap ("Enter VR").
+   **Android (Chrome)** supports WebXR `immersive-vr`, which handles stereo and head tracking.
+4. Keep the screen awake with `navigator.wakeLock.request('screen')` (Safari 16.4+), re-requested
+   when the page becomes visible again.
+5. The viewer page's origin must be in `CORS_ORIGINS`, and the bucket needs CORS for
+   textures (`npm run storage:cors`).
+
+#### iPhone checklist
+
+iPhone Safari has no VR mode, no Fullscreen API for web pages and no orientation lock. The
+viewer page compensates:
+
+| Problem | What the viewer page does |
+|---|---|
+| No VR mode | Draw two side-by-side eye views itself (three.js `StereoEffect`, or two viewports with the cameras offset by half the eye distance, about 32 mm each). |
+| Head tracking needs permission | Show a large **"Enter VR"** button. Its tap handler calls `DeviceOrientationEvent.requestPermission()`; only a direct tap may trigger it. If the user taps "Don't Allow", Safari will not ask again until the tab is closed: show "Close this tab and scan again, then tap Allow". |
+| No fullscreen: the address bar takes space | Make the viewer an installable web app: a manifest with `"display": "fullscreen"` (falls back to `standalone`), plus `<meta name="apple-mobile-web-app-capable" content="yes">` and `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">`. Show a one-time hint: **Share -> Add to Home Screen**, then open it from the Home Screen icon. In plain Safari, landscape mode already hides most of the browser bars, which is usable for a demo. |
+| Cannot force landscape | Listen to `screen.orientation` / `resize`; while portrait, cover the view with "Turn your phone sideways". |
+| Screen dims and locks | Wake lock (above). If unsupported, tell users to raise Auto-Lock in Settings before the demo. |
+| Accidental scroll, zoom or pull-to-refresh | `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">`, a full-viewport canvas, `touch-action: none` and `overscroll-behavior: none`. |
+| Lens distortion | Optional barrel-distortion shader pass; without it the edges look slightly curved, acceptable for a demo. |
+| Getting back out | Tap anywhere (or the headset's button) to show an "Exit VR" overlay. |
+
+A Home Screen web app keeps its own storage, separate from Safari: the `vs_` token from the
+scanned link is not shared with it. Opening the installed app should show "Scan the QR code
+again" (or reuse the pairing flow) instead of an empty screen. Test every step on the actual
+demo iPhones; desktop browser emulation does not reproduce motion sensors or permission prompts.
 
 Old QR codes keep working as entry links; whether they still grant access follows the
 current sharing mode and link tokens.

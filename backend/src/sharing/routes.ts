@@ -1,4 +1,4 @@
-// Owner-controlled permissions: members, email invitations, sharing modes, share-link
+// Owner-controlled permissions: members, username invitations, sharing modes, share-link
 // rotation, edit-link joining, link/QR resolution and phone pairing.
 //
 // Every change bumps galleries.access_version and re-evaluates open WebSockets, so a
@@ -10,8 +10,9 @@ import { capabilitiesFor, countEditors, requireAccess, resolveAccess } from '../
 import { principalFor, requireUser } from '../http/context.js';
 import { randomToken, sha256 } from '../lib/crypto.js';
 import { AppError } from '../lib/errors.js';
+import { Username } from '../auth/routes.js';
 import { ErrorResponse, GalleryIdParams, SharingMode } from '../schemas/api.js';
-import { editJoinLink, galleryLink, invitationLink, pairingLink, parseLink, renderQr } from './links.js';
+import { editJoinLink, editorLink, invitationLink, pairingLink, parseLink, renderQr, viewerLink } from './links.js';
 
 const MemberRole = Type.Union([Type.Literal('editor'), Type.Literal('viewer')]);
 const UserIdParams = Type.Object({ galleryId: Type.String({ format: 'uuid' }), userId: Type.String({ format: 'uuid' }) });
@@ -20,14 +21,15 @@ const SharingInfo = Type.Object({
   galleryId: Type.String(),
   sharingMode: SharingMode,
   linkVersion: Type.Integer({ description: 'Incremented whenever the edit link is rotated.' }),
-  galleryUrl: Type.String({ description: 'Canonical deep link without a share token. Works only for signed-in members.' }),
-  viewUrl: Type.Union([Type.String(), Type.Null()], { description: 'Link that grants view access (null in restricted mode).' }),
+  galleryUrl: Type.String({ description: 'Mobile-browser viewer link without a share token. Works only for signed-in members.' }),
+  viewUrl: Type.Union([Type.String(), Type.Null()], { description: 'Mobile-browser viewer link that grants view access (null in restricted mode). Encode this in the QR code.' }),
+  editorUrl: Type.String({ description: 'Website editor link (members with edit access).' }),
   editJoinUrl: Type.Union([Type.String(), Type.Null()], { description: 'Website link that lets signed-in users join as editors (edit_link mode only).' }),
 });
 
 const Member = Type.Object({
   userId: Type.String(),
-  email: Type.String(),
+  username: Type.String(),
   displayName: Type.String(),
   role: Type.Union([Type.Literal('owner'), MemberRole]),
   source: Type.Union([Type.Literal('owner'), Type.Literal('invite'), Type.Literal('direct'), Type.Literal('link')]),
@@ -37,14 +39,14 @@ const Member = Type.Object({
 
 const Invitation = Type.Object({
   id: Type.String(),
-  email: Type.String(),
+  username: Type.String({ description: 'Only this account can accept.' }),
   role: MemberRole,
   expiresAt: Type.String({ format: 'date-time' }),
   createdAt: Type.String({ format: 'date-time' }),
 });
 
 export async function sharingRoutes(app: App) {
-  const { db, hub, config } = app.deps;
+  const { db, hub, config, auth } = app.deps;
 
   async function afterAccessChange(galleryId: string) {
     await db.query(`UPDATE galleries SET access_version = access_version + 1 WHERE id = $1`, [galleryId]);
@@ -61,9 +63,34 @@ export async function sharingRoutes(app: App) {
       galleryId,
       sharingMode: g.sharing_mode,
       linkVersion: g.link_version,
-      galleryUrl: galleryLink(config, galleryId),
-      viewUrl: g.sharing_mode === 'restricted' ? null : galleryLink(config, galleryId, g.view_link_token),
+      galleryUrl: viewerLink(config, galleryId),
+      viewUrl: g.sharing_mode === 'restricted' ? null : viewerLink(config, galleryId, g.view_link_token),
+      editorUrl: editorLink(config, galleryId),
       editJoinUrl: g.sharing_mode === 'edit_link' ? editJoinLink(config, galleryId, g.edit_link_token) : null,
+    };
+  }
+
+  async function grantRole(galleryId: string, userId: string, role: 'editor' | 'viewer') {
+    const { rows: g } = await db.query(`SELECT owner_id FROM galleries WHERE id = $1`, [galleryId]);
+    if (g[0].owner_id === userId) throw new AppError('VALIDATION_FAILED', { reason: "the owner's role cannot be changed" });
+    const { rows: u } = await db.query(`SELECT id, username, display_name FROM users WHERE id = $1`, [userId]);
+    if (!u[0]) throw new AppError('NOT_FOUND', { what: 'user' });
+    if (role === 'editor') await assertEditorSlot(galleryId, userId);
+    const { rows } = await db.query(
+      `INSERT INTO gallery_members (gallery_id, user_id, role, source) VALUES ($1, $2, $3, 'direct')
+       ON CONFLICT (gallery_id, user_id) DO UPDATE SET role = EXCLUDED.role, source = 'direct', link_version = NULL, updated_at = now()
+       RETURNING created_at`,
+      [galleryId, userId, role],
+    );
+    await afterAccessChange(galleryId);
+    return {
+      userId,
+      username: u[0].username as string,
+      displayName: u[0].display_name as string,
+      role,
+      source: 'direct' as const,
+      active: true,
+      createdAt: new Date(rows[0].created_at).toISOString(),
     };
   }
 
@@ -158,10 +185,10 @@ export async function sharingRoutes(app: App) {
       const id = req.params.galleryId;
       await requireAccess(db, id, principalFor(req, id), 'manage');
       const { rows } = await db.query(
-        `SELECT u.id AS user_id, u.email, u.display_name, 'owner' AS role, 'owner' AS source, true AS active, g.created_at
+        `SELECT u.id AS user_id, u.username, u.display_name, 'owner' AS role, 'owner' AS source, true AS active, g.created_at
            FROM galleries g JOIN users u ON u.id = g.owner_id WHERE g.id = $1
          UNION ALL
-         SELECT u.id, u.email, u.display_name, m.role, m.source,
+         SELECT u.id, u.username, u.display_name, m.role, m.source,
                 (m.source <> 'link' OR (g.sharing_mode = 'edit_link' AND m.link_version = g.link_version)), m.created_at
            FROM gallery_members m JOIN users u ON u.id = m.user_id JOIN galleries g ON g.id = m.gallery_id
           WHERE m.gallery_id = $1
@@ -171,7 +198,7 @@ export async function sharingRoutes(app: App) {
       return {
         items: rows.map((r) => ({
           userId: r.user_id,
-          email: r.email,
+          username: r.username,
           displayName: r.display_name,
           role: r.role,
           source: r.source,
@@ -196,29 +223,29 @@ export async function sharingRoutes(app: App) {
     },
     async (req) => {
       requireUser(req);
-      const { galleryId, userId } = req.params;
-      await requireAccess(db, galleryId, principalFor(req, galleryId), 'manage');
-      const { rows: g } = await db.query(`SELECT owner_id FROM galleries WHERE id = $1`, [galleryId]);
-      if (g[0].owner_id === userId) throw new AppError('VALIDATION_FAILED', { reason: "the owner's role cannot be changed" });
-      const { rows: u } = await db.query(`SELECT id, email, display_name FROM users WHERE id = $1`, [userId]);
-      if (!u[0]) throw new AppError('NOT_FOUND', { what: 'user' });
-      if (req.body.role === 'editor') await assertEditorSlot(galleryId, userId);
-      const { rows } = await db.query(
-        `INSERT INTO gallery_members (gallery_id, user_id, role, source) VALUES ($1, $2, $3, 'direct')
-         ON CONFLICT (gallery_id, user_id) DO UPDATE SET role = EXCLUDED.role, source = 'direct', link_version = NULL, updated_at = now()
-         RETURNING created_at`,
-        [galleryId, userId, req.body.role],
-      );
-      await afterAccessChange(galleryId);
-      return {
-        userId,
-        email: u[0].email,
-        displayName: u[0].display_name,
-        role: req.body.role,
-        source: 'direct' as const,
-        active: true,
-        createdAt: new Date(rows[0].created_at).toISOString(),
-      };
+      await requireAccess(db, req.params.galleryId, principalFor(req, req.params.galleryId), 'manage');
+      return grantRole(req.params.galleryId, req.params.userId, req.body.role);
+    },
+  );
+
+  app.post(
+    '/v1/galleries/:galleryId/members',
+    {
+      schema: {
+        tags: ['sharing'],
+        summary: 'Add a member by username, or change their role (owner)',
+        description: 'Same as PUT /members/{userId}, addressed by username. 404 if no account has that username.',
+        params: GalleryIdParams,
+        body: Type.Object({ username: Type.String({ minLength: 1, maxLength: 30 }), role: MemberRole }, { additionalProperties: false }),
+        response: { 200: Member, 404: ErrorResponse },
+      },
+    },
+    async (req) => {
+      requireUser(req);
+      await requireAccess(db, req.params.galleryId, principalFor(req, req.params.galleryId), 'manage');
+      const user = await auth.findByUsername(req.body.username);
+      if (!user) throw new AppError('NOT_FOUND', { what: 'user' });
+      return grantRole(req.params.galleryId, user.id, req.body.role);
     },
   );
 
@@ -246,18 +273,18 @@ export async function sharingRoutes(app: App) {
     },
   );
 
-  // ---- Email invitations ----------------------------------------------------
+  // ---- Invitations (by username) ----------------------------------------------
 
   app.post(
     '/v1/galleries/:galleryId/invitations',
     {
       schema: {
         tags: ['sharing'],
-        summary: 'Invite by email (owner)',
+        summary: 'Invite a username (owner)',
         description:
-          'Returns a single-use invitation link for the frontend to share (no email is sent by the backend). Only an account with the invited email can accept it. Expires after INVITATION_TTL_HOURS.',
+          'Returns a single-use invitation link for the frontend to share. Only the account with this username can accept it (the account may be created after the invitation). Expires after INVITATION_TTL_HOURS. To add an existing account immediately, use POST /members instead.',
         params: GalleryIdParams,
-        body: Type.Object({ email: Type.String({ format: 'email', maxLength: 254 }), role: MemberRole }, { additionalProperties: false }),
+        body: Type.Object({ username: Username, role: MemberRole }, { additionalProperties: false }),
         response: { 201: Type.Intersect([Invitation, Type.Object({ url: Type.String(), token: Type.String() })]) },
       },
     },
@@ -268,14 +295,14 @@ export async function sharingRoutes(app: App) {
       const token = randomToken('inv', 24);
       const expiresAt = new Date(Date.now() + config.auth.invitationTtlHours * 3600_000);
       const { rows } = await db.query(
-        `INSERT INTO gallery_invitations (gallery_id, email, role, token_hash, invited_by, expires_at)
+        `INSERT INTO gallery_invitations (gallery_id, username, role, token_hash, invited_by, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at`,
-        [id, req.body.email.trim().toLowerCase(), req.body.role, sha256(token), me.userId, expiresAt],
+        [id, req.body.username.trim(), req.body.role, sha256(token), me.userId, expiresAt],
       );
       reply.code(201);
       return {
         id: rows[0].id,
-        email: req.body.email.trim().toLowerCase(),
+        username: req.body.username.trim(),
         role: req.body.role,
         expiresAt: expiresAt.toISOString(),
         createdAt: new Date(rows[0].created_at).toISOString(),
@@ -293,12 +320,12 @@ export async function sharingRoutes(app: App) {
       const id = req.params.galleryId;
       await requireAccess(db, id, principalFor(req, id), 'manage');
       const { rows } = await db.query(
-        `SELECT id, email, role, expires_at, created_at FROM gallery_invitations
+        `SELECT id, username, role, expires_at, created_at FROM gallery_invitations
          WHERE gallery_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now() ORDER BY created_at DESC`,
         [id],
       );
       return {
-        items: rows.map((r) => ({ id: r.id, email: r.email, role: r.role, expiresAt: r.expires_at.toISOString(), createdAt: r.created_at.toISOString() })),
+        items: rows.map((r) => ({ id: r.id, username: r.username, role: r.role, expiresAt: r.expires_at.toISOString(), createdAt: r.created_at.toISOString() })),
       };
     },
   );
@@ -335,7 +362,7 @@ export async function sharingRoutes(app: App) {
             galleryId: Type.String(),
             galleryTitle: Type.String(),
             role: MemberRole,
-            email: Type.String(),
+            username: Type.String(),
             invitedBy: Type.String(),
             expiresAt: Type.String(),
           }),
@@ -345,14 +372,14 @@ export async function sharingRoutes(app: App) {
     },
     async (req) => {
       const { rows } = await db.query(
-        `SELECT i.gallery_id, g.title, i.role, i.email, u.display_name, i.expires_at FROM gallery_invitations i
+        `SELECT i.gallery_id, g.title, i.role, i.username, u.display_name, i.expires_at FROM gallery_invitations i
          JOIN galleries g ON g.id = i.gallery_id AND g.deleted_at IS NULL JOIN users u ON u.id = i.invited_by
          WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()`,
         [sha256(req.params.token)],
       );
       const r = rows[0];
       if (!r) throw new AppError('INVITATION_INVALID');
-      return { galleryId: r.gallery_id, galleryTitle: r.title, role: r.role, email: r.email, invitedBy: r.display_name, expiresAt: r.expires_at.toISOString() };
+      return { galleryId: r.gallery_id, galleryTitle: r.title, role: r.role, username: r.username, invitedBy: r.display_name, expiresAt: r.expires_at.toISOString() };
     },
   );
 
@@ -361,7 +388,7 @@ export async function sharingRoutes(app: App) {
     {
       schema: {
         tags: ['sharing'],
-        summary: 'Accept an invitation (signed in with the invited email)',
+        summary: 'Accept an invitation (signed in as the invited username)',
         body: Type.Object({ token: Type.String({ maxLength: 100 }) }, { additionalProperties: false }),
         response: { 200: Type.Object({ galleryId: Type.String(), role: Type.String() }), 410: ErrorResponse },
       },
@@ -370,14 +397,15 @@ export async function sharingRoutes(app: App) {
       const me = requireUser(req);
       const result = await withTransaction(db, async (client) => {
         const { rows } = await client.query(
-          `SELECT i.id, i.gallery_id, i.role, i.email, g.owner_id FROM gallery_invitations i JOIN galleries g ON g.id = i.gallery_id AND g.deleted_at IS NULL
+          `SELECT i.id, i.gallery_id, i.role, i.username, g.owner_id FROM gallery_invitations i JOIN galleries g ON g.id = i.gallery_id AND g.deleted_at IS NULL
            WHERE i.token_hash = $1 AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now() FOR UPDATE OF i`,
           [sha256(req.body.token)],
         );
         const inv = rows[0];
         if (!inv) throw new AppError('INVITATION_INVALID');
-        const { rows: u } = await client.query(`SELECT email FROM users WHERE id = $1`, [me.userId]);
-        if (u[0].email.toLowerCase() !== inv.email) throw new AppError('FORBIDDEN', { reason: 'invitation was sent to a different email' });
+        const { rows: u } = await client.query(`SELECT username FROM users WHERE id = $1`, [me.userId]);
+        if (u[0].username.toLowerCase() !== String(inv.username).toLowerCase())
+          throw new AppError('FORBIDDEN', { reason: 'invitation was sent to a different username' });
         await client.query(`UPDATE gallery_invitations SET accepted_at = now(), accepted_by = $2 WHERE id = $1`, [inv.id, me.userId]);
         if (inv.owner_id === me.userId) return { galleryId: inv.gallery_id, role: 'owner' };
         if (inv.role === 'editor' && (await countEditors(client, inv.gallery_id, me.userId)) >= config.limits.maxEditorsPerGallery)
@@ -442,9 +470,9 @@ export async function sharingRoutes(app: App) {
     {
       schema: {
         tags: ['sharing'],
-        summary: 'Resolve a scanned QR code / deep link to the next step',
+        summary: 'Resolve a scanned QR code / viewer link to the next step',
         description:
-          'Send the Authorization header if the app has a session. next: "open" (create a viewer session and load the scene), "sign_in" (authenticate, then resolve again), "claim_pairing" (POST /v1/pairings/claim), "accept_invitation", "join_as_editor" (website). A restricted gallery never reveals its title to callers without access. A rotated or disabled share link returns 410 LINK_DISABLED unless the caller has access another way.',
+          'Called by the mobile-browser viewer page with the URL it was opened at (send the Authorization header if the browser has a session). next: "open" (create a viewer session and load the scene), "sign_in" (authenticate, then resolve again), "claim_pairing" (POST /v1/pairings/claim), "accept_invitation", "join_as_editor" (website). A restricted gallery never reveals its title to callers without access. A rotated or disabled share link returns 410 LINK_DISABLED unless the caller has access another way.',
         security: [],
         querystring: Type.Object({ url: Type.String({ maxLength: 2000 }) }),
         response: {

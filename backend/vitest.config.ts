@@ -8,5 +8,7 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 60_000,
+    // Tests must not depend on a local live smoke-test report.
+    env: { ASSISTANT_SMOKE_REPORT: 'test/.no-smoke-report.json' },
   },
 });

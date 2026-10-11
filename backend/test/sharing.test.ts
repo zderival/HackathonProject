@@ -17,12 +17,18 @@ describe('sharing modes and links', () => {
 
     let share = await owner.api.get(`/v1/galleries/${g.id}/sharing`);
     expect(share.body).toMatchObject({ sharingMode: 'restricted', viewUrl: null, editJoinUrl: null });
+    // Phones open the mobile-browser viewer; the editor lives at /g/.
+    expect(share.body.galleryUrl).toMatch(new RegExp(`/view/${g.id}$`));
+    expect(share.body.editorUrl).toMatch(new RegExp(`/g/${g.id}$`));
     // Restricted: the gallery deep link alone grants nothing.
     const plain = await anon.get(`/v1/links/resolve?url=${encodeURIComponent(share.body.galleryUrl)}`);
     expect(plain.body).toMatchObject({ next: 'sign_in', gallery: null });
 
     share = await owner.api.put(`/v1/galleries/${g.id}/sharing`, { mode: 'view_link' });
     const viewUrl = share.body.viewUrl as string;
+    expect(viewUrl).toMatch(new RegExp(`/view/${g.id}\\?link=gv_`));
+    // Older /g/{id}?link= links still resolve.
+    expect((await anon.get(`/v1/links/resolve?url=${encodeURIComponent(viewUrl.replace('/view/', '/g/'))}`)).body.next).toBe('open');
     const resolved = await anon.get(`/v1/links/resolve?url=${encodeURIComponent(viewUrl)}`);
     expect(resolved.body).toMatchObject({ next: 'open', galleryId: g.id, access: { role: 'viewer', via: 'link', canEdit: false } });
 
@@ -108,12 +114,12 @@ describe('sharing modes and links', () => {
 });
 
 describe('members and invitations', () => {
-  it('invites by email; only the invited account can accept, once, before expiry', async () => {
+  it('invites by username; only that account can accept, once, before expiry', async () => {
     const owner = await registerUser(srv.base, 'Owner');
     const invitee = await registerUser(srv.base, 'Invitee');
     const stranger = await registerUser(srv.base, 'Stranger');
     const g = await createGallery(owner.api);
-    const inv = await owner.api.post(`/v1/galleries/${g.id}/invitations`, { email: invitee.email.toUpperCase(), role: 'editor' });
+    const inv = await owner.api.post(`/v1/galleries/${g.id}/invitations`, { username: invitee.username.toUpperCase(), role: 'editor' });
     expect(inv.status).toBe(201);
     expect(inv.body.url).toContain(`/invite/${inv.body.token}`);
     expect((await client(srv.base).get(`/v1/invitations/${inv.body.token}`)).body).toMatchObject({ galleryId: g.id, role: 'editor' });
@@ -124,7 +130,7 @@ describe('members and invitations', () => {
     expect((await invitee.api.post('/v1/invitations/accept', { token: inv.body.token })).status).toBe(410);
     expect((await invitee.api.get('/v1/galleries')).body.items.map((x: any) => x.id)).toContain(g.id);
 
-    const expired = await owner.api.post(`/v1/galleries/${g.id}/invitations`, { email: stranger.email, role: 'viewer' });
+    const expired = await owner.api.post(`/v1/galleries/${g.id}/invitations`, { username: stranger.username, role: 'viewer' });
     await srv.db.query(`UPDATE gallery_invitations SET expires_at = now() - interval '1 minute' WHERE id = $1`, [expired.body.id]);
     expect((await stranger.api.post('/v1/invitations/accept', { token: expired.body.token })).status).toBe(410);
   });
@@ -137,7 +143,8 @@ describe('members and invitations', () => {
 
     expect((await editor.api.put(`/v1/galleries/${g.id}/members/${editor.id}`, { role: 'editor' })).status).toBe(403);
     expect((await editor.api.put(`/v1/galleries/${g.id}/sharing`, { mode: 'view_link' })).status).toBe(403);
-    expect((await editor.api.post(`/v1/galleries/${g.id}/invitations`, { email: 'x@example.test', role: 'editor' })).status).toBe(403);
+    expect((await editor.api.post(`/v1/galleries/${g.id}/invitations`, { username: 'someone', role: 'editor' })).status).toBe(403);
+    expect((await editor.api.post(`/v1/galleries/${g.id}/members`, { username: editor.username, role: 'editor' })).status).toBe(403);
 
     const live = await connectAndSync(editor.api, g.id, 'edit');
     await owner.api.put(`/v1/galleries/${g.id}/members/${editor.id}`, { role: 'viewer' });

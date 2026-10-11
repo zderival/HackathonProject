@@ -6,12 +6,15 @@ import { LangSchema as Lang } from '../lib/i18n.js';
 import { RateLimiter } from '../lib/rate-limit.js';
 import { ErrorResponse } from '../schemas/api.js';
 
-const Email = Type.String({ format: 'email', maxLength: 254 });
+export const Username = Type.String({
+  pattern: '^[A-Za-z0-9_.-]{3,30}$',
+  description: '3-30 characters: letters, digits, "_", ".", "-". Unique, case-insensitive.',
+});
 const Password = Type.String({ minLength: 8, maxLength: 200 });
 
 const User = Type.Object({
   id: Type.String({ format: 'uuid' }),
-  email: Type.String(),
+  username: Type.String(),
   displayName: Type.String(),
   preferredLanguage: Lang,
   createdAt: Type.String({ format: 'date-time' }),
@@ -29,7 +32,7 @@ const AuthResult = Type.Object({ user: User, tokens: Tokens });
 
 export async function authRoutes(app: App) {
   const { auth } = app.deps;
-  // Per-IP+email login throttle (in-memory; single instance).
+  // Per-IP+username login throttle (in-memory; single instance).
   const loginLimiter = new RateLimiter(app.deps.config.limits.authAttemptsPerMinute, 60_000);
 
   app.post(
@@ -37,9 +40,15 @@ export async function authRoutes(app: App) {
     {
       schema: {
         tags: ['auth'],
-        summary: 'Create an account (email/password)',
+        summary: 'Create an account (username + password)',
+        description: 'There is no email and therefore no password recovery: a forgotten password cannot be reset. Users can change their password while signed in.',
         body: Type.Object(
-          { email: Email, password: Password, displayName: Type.String({ minLength: 1, maxLength: 80 }), preferredLanguage: Type.Optional(Lang) },
+          {
+            username: Username,
+            password: Password,
+            displayName: Type.Optional(Type.String({ minLength: 1, maxLength: 80, description: 'Defaults to the username.' })),
+            preferredLanguage: Type.Optional(Lang),
+          },
           { additionalProperties: false },
         ),
         response: { 201: AuthResult, 409: ErrorResponse },
@@ -59,13 +68,13 @@ export async function authRoutes(app: App) {
       schema: {
         tags: ['auth'],
         summary: 'Sign in',
-        body: Type.Object({ email: Email, password: Type.String({ maxLength: 200 }) }, { additionalProperties: false }),
+        body: Type.Object({ username: Type.String({ minLength: 1, maxLength: 30 }), password: Type.String({ maxLength: 200 }) }, { additionalProperties: false }),
         response: { 200: AuthResult, 401: ErrorResponse, 429: ErrorResponse },
       },
     },
     async (req) => {
-      if (!loginLimiter.take(`login:${req.ip}:${req.body.email.toLowerCase()}`)) throw new AppError('RATE_LIMITED');
-      return auth.login(req.body.email, req.body.password, req.headers['user-agent']);
+      if (!loginLimiter.take(`login:${req.ip}:${req.body.username.trim().toLowerCase()}`)) throw new AppError('RATE_LIMITED');
+      return auth.login(req.body.username, req.body.password, req.headers['user-agent']);
     },
   );
 
@@ -96,6 +105,25 @@ export async function authRoutes(app: App) {
       const u = requireUser(req);
       if (req.body?.allSessions) await auth.revokeAllSessions(u.userId);
       else await auth.revokeSession(u.sessionId);
+      reply.code(204);
+      return null;
+    },
+  );
+
+  app.post(
+    '/v1/auth/password',
+    {
+      schema: {
+        tags: ['auth'],
+        summary: 'Change your password (signs out your other sessions)',
+        body: Type.Object({ currentPassword: Type.String({ maxLength: 200 }), newPassword: Password }, { additionalProperties: false }),
+        response: { 204: Type.Null(), 401: ErrorResponse },
+      },
+    },
+    async (req, reply) => {
+      const u = requireUser(req);
+      if (!loginLimiter.take(`pw:${u.userId}`)) throw new AppError('RATE_LIMITED');
+      await auth.changePassword(u.userId, u.sessionId, req.body.currentPassword, req.body.newPassword);
       reply.code(204);
       return null;
     },

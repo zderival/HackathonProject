@@ -14,11 +14,14 @@ npm run dev                         # API on http://localhost:8080
 npm run demo:simulate               # automated dress rehearsal (prints latency)
 ```
 
-For phones on the same Wi-Fi, set `PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT`, `DEEP_LINK_BASE_URL`
-to your computer's LAN IP (e.g. `http://192.168.1.20:8080`), or use the deployed HTTPS URLs.
+Phones open the viewer in their **mobile browser**, which only allows motion sensors
+(head tracking) on **HTTPS**. Use the deployed site, or expose your local website and API
+through an HTTPS tunnel, and set `PUBLIC_API_URL`, `S3_PUBLIC_ENDPOINT`, `VIEWER_BASE_URL`
+and `CORS_ORIGINS` to those HTTPS URLs. Test on the actual demo phones beforehand: on iPhone,
+check that the "Enter VR" button shows the motion-permission prompt.
 
-Accounts from the seed (password printed by the seed): `owner@demo.gallery.test` (en),
-`editor@...` (ht), `editor2@...` (ko), `viewer@...` (es). Each seed run creates a new
+Accounts from the seed (usernames; password printed by the seed): `demo-owner` (en),
+`demo-editor` (ht), `demo-editor2` (ko), `demo-viewer` (es). Each seed run creates a new
 "Demo Gallery" and resets these passwords.
 
 ## Script (about 6 minutes)
@@ -27,7 +30,7 @@ Accounts from the seed (password printed by the seed): `owner@demo.gallery.test`
 |---|---|---|---|
 | 1 | Owner (website) | Sign in, open "Demo Gallery" | Furnished room, three artworks, bench, sculpture, spotlights |
 | 2 | Owner | "Preview on phone" -> QR (`viewer-sessions {kind: preview}` + `/v1/pairings/qr`) | QR code on screen |
-| 3 | Phone 1 (+ phone 2) | Scan, app claims the pairing code, headset on | The same room in VR; looking around is local head tracking |
+| 3 | Phone 1 (+ phone 2) | Scan with the camera app -> the viewer opens in the browser and claims the pairing code -> tap "Enter VR" (allow motion access), landscape, into the headset | The same room in VR; looking around is local head tracking |
 | 4 | Editor (2nd laptop, `editor@`) | Sign in, open the gallery | Presence of a second editor |
 | 5 | Owner | Upload an image, drag it onto the north wall | Appears on both phones within a blink |
 | 6 | Editor | Resize the room wider, darken the floor, warm the key light | Walls move out on the phones |

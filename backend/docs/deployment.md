@@ -34,7 +34,7 @@ WebSocket upgrades automatically.
    ```
    Secrets to set: `DATABASE_URL`, `S3_*`, `GEMINI_API_KEY`, and (only with donations)
    `SOLANA_WALLET_ENCRYPTION_KEY`. `PUBLIC_API_URL=https://api.example.com`,
-   `PUBLIC_WEB_URL` / `DEEP_LINK_BASE_URL` = the website origin, `CORS_ORIGINS` = the website
+   `PUBLIC_WEB_URL` / `VIEWER_BASE_URL` = the website origin, `CORS_ORIGINS` = the website
    origin(s), `TRUST_PROXY=true`.
 6. **Start:** `docker compose up -d --build`. Caddy obtains the certificate on first request.
    Migrations run at startup (`MIGRATE_ON_START=true`, serialized with an advisory lock). To run
@@ -69,7 +69,7 @@ All variables are documented in `.env.example`. Production essentials:
 | `DATABASE_URL`, `DATABASE_SSL` | PostgreSQL (managed, TLS) |
 | `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`, `S3_FORCE_PATH_STYLE` | private object storage; the public endpoint is used for signed URLs |
 | `PUBLIC_API_URL` | builds `wss://` ticket URLs |
-| `PUBLIC_WEB_URL`, `DEEP_LINK_BASE_URL` | invitation, join and Universal Link URLs |
+| `PUBLIC_WEB_URL`, `VIEWER_BASE_URL` | editor/invitation/join links; mobile-browser viewer links in QR codes (HTTPS needed for phone motion sensors) |
 | `CORS_ORIGINS` | website origins (comma-separated); never `*` in production |
 | `TRUST_PROXY=true` | behind Caddy/Render so client IPs and HTTPS are correct |
 | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TTS_MODEL` | assistant |

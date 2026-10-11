@@ -59,9 +59,10 @@ export const PLAN_SCHEMA = {
     transcriptConfidence: { type: 'string', enum: ['high', 'low'], description: 'low if the audio was unclear, noisy or ambiguous.' },
     detectedLanguage: { type: 'string', enum: ['en', 'ht', 'fr', 'es', 'ko', 'other'] },
     intent: { type: 'string', enum: ['edit', 'undo', 'redo', 'clarify', 'answer', 'unsupported'] },
+    // No maxItems here: Gemini rejects (400) maxItems combined with the 15-value op enum.
+    // The server caps operations instead (normalizePlan + LIMIT_MAX_OPS_PER_BATCH).
     operations: {
       type: 'array',
-      maxItems: 50,
       items: {
         type: 'object',
         properties: {

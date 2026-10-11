@@ -1,7 +1,7 @@
 # Virtual Gallery Backend
 
 Backend for a collaborative 3D art gallery: a website editor (PowerPoint-like editing,
-artwork uploads, multilingual Gemini assistant) and an iPhone VR viewer that follows edits
+artwork uploads, multilingual Gemini assistant) and a phone VR viewer that opens in the mobile browser from a QR code and follows edits
 live. TypeScript, Node.js 24 LTS, Fastify, PostgreSQL, WebSockets, S3-compatible storage.
 
 ## Quick start (local)
@@ -26,7 +26,7 @@ if `npm run dev` already uses 8080).
 | Command | Purpose |
 |---|---|
 | `npm run dev` / `build` / `start` | develop / compile / run compiled |
-| `npm test` | 69 integration tests (needs `docker compose up -d db s3`; uses the `gallery_test` database) |
+| `npm test` | 75 integration tests (needs `docker compose up -d db s3`; uses the `gallery_test` database) |
 | `npm run typecheck` | TypeScript check |
 | `npm run migrate` (`migrate:prod` when compiled) | apply SQL migrations |
 | `npm run seed:demo` | demo/dev data (refused in production) |
@@ -41,11 +41,11 @@ if `npm run dev` already uses 8080).
 | Doc | Contents |
 |---|---|
 | [docs/scene-model.md](docs/scene-model.md) | Scene schema, coordinate conventions, Unity/three.js/SceneKit conversion, operations |
-| [docs/api-guide.md](docs/api-guide.md) | Auth, errors, idempotency and conflicts, undo, permissions precedence, links/QR/iOS flow, assets |
+| [docs/api-guide.md](docs/api-guide.md) | Auth, errors, idempotency and conflicts, undo, permissions precedence, links/QR/mobile-browser viewer flow, assets |
 | [docs/websocket-protocol.md](docs/websocket-protocol.md) | Real-time protocol: tickets, ordering, gaps, reconnect, close codes, throttling |
 | [docs/assistant.md](docs/assistant.md) | Gemini assistant: async commands, voice, speech, safety, languages, verification |
 | [docs/donations.md](docs/donations.md) | Optional Solana donations (custodial gallery wallets) |
-| [docs/integration-examples.md](docs/integration-examples.md) | Browser TypeScript and iPhone/Unity-facing examples |
+| [docs/integration-examples.md](docs/integration-examples.md) | Website editor and mobile-browser VR viewer examples (TypeScript) |
 | [docs/deployment.md](docs/deployment.md) | Vultr (primary) and Render deployment, configuration, operations |
 | [docs/demo-runbook.md](docs/demo-runbook.md) | Demo preparation and script |
 | [docs/implementation-report.md](docs/implementation-report.md) | What is verified, measured latency, what is not, limits |
@@ -54,6 +54,7 @@ if `npm run dev` already uses 8080).
 ## Status
 
 Core editing, collaboration, permissions/QR, uploads, real-time sync, undo/redo, the
-assistant pipeline and donations are implemented and covered by tests. Live Gemini
-language support is **unverified until `npm run smoke:gemini` is run with a key**; see the
-implementation report for everything verified and the remaining limits.
+assistant pipeline and donations are implemented and covered by tests. The live Gemini
+smoke test passed for text, voice input (synthesized speech) and spoken replies in all five
+languages on 2026-10-10; see the implementation report for everything verified and the
+remaining limits.
